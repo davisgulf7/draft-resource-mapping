@@ -9,6 +9,20 @@
   <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="main.css" />
   <style>
+    /* ── Map semantic aliases to USF brand tokens ── */
+    :root {
+      --color-green:          var(--usf-green);
+      --color-evergreen:      var(--usf-evergreen);
+      --color-gold:           var(--usf-gold);
+      --color-sand:           var(--usf-sand);
+      --color-teal:           var(--usf-teal);
+      --color-border:         rgba(0, 103, 71, 0.15);
+      --color-text-primary:   var(--ink);
+      --color-text-muted:     var(--ink-muted);
+      --color-text-secondary: var(--usf-slate);
+      --radius-md:            var(--radius);
+    }
+
     /* ── Lesson Planner layout overrides ── */
     body {
       display: flex;
@@ -17,7 +31,7 @@
       overflow: hidden;
     }
 
-    .app-topbar {
+    .topbar {
       flex: 0 0 auto;
     }
 
@@ -590,18 +604,18 @@
 <!-- ═══════════════════════════════════════════
      TOP BAR
 ════════════════════════════════════════════ -->
-<header class="app-topbar">
-  <div class="topbar-inner">
-    <div class="topbar-brand">
-      <div class="brand-lockup">
-        <span class="brand-primary">CLS</span>
-        <span class="brand-divider" aria-hidden="true">|</span>
-        <span class="brand-secondary">Lesson Planner</span>
+<header class="topbar">
+  <div class="container topbar__inner">
+    <a class="topbar__brand" href="resource-mapping.html">
+      <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+      <div class="topbar__names">
+        <span class="topbar__org">Coordinated Learning Systems</span>
+        <span class="topbar__sub">University of South Florida</span>
       </div>
-    </div>
-    <nav class="topbar-nav">
-      <a href="resource-mapping.html" class="nav-link">Resource Mapping</a>
-      <a href="lesson-planner.html" class="nav-link active">Lesson Planner</a>
+    </a>
+    <nav class="topbar__nav" aria-label="Main navigation">
+      <a href="resource-mapping.html">Resource Mapping</a>
+      <a href="lesson-planner.html" class="active">Lesson Planner</a>
     </nav>
   </div>
 </header>
@@ -782,7 +796,8 @@ async function loadClassrooms() {
    Helpers: escape / simple markdown
 ───────────────────────────────────────── */
 function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function renderMarkdown(text) {
