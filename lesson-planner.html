@@ -1176,6 +1176,10 @@ async function sendToAI(userText, isGreeting) {
   setStatus('thinking');
   showTyping(true);
 
+  // Bubble we'll progressively fill as the stream arrives
+  let streamingBubble = null;
+  let fullText = '';
+
   try {
     const payload = {
       classroomContext: currentClassroom.contextString,
@@ -1200,15 +1204,39 @@ async function sendToAI(userText, isGreeting) {
       throw new Error(`Edge Function error: ${response.status} — ${errText}`);
     }
 
-    const data = await response.json();
-    const assistantMessage = data.message;
+    if (!response.body) {
+      throw new Error('No response body to stream.');
+    }
 
-    showTyping(false);
+    // ── Read the stream ──
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-    // Display AI response
-    appendMessage('assistant', assistantMessage);
-    conversationHistory.push({ role: 'assistant', content: assistantMessage });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      if (!chunk) continue;
 
+      // On first chunk: hide typing indicator and create the assistant bubble
+      if (!streamingBubble) {
+        showTyping(false);
+        streamingBubble = createAssistantBubble();
+      }
+
+      fullText += chunk;
+      streamingBubble.innerHTML = renderMarkdown(fullText);
+      scrollToBottom();
+    }
+
+    // Edge case: stream ended with no content
+    if (!streamingBubble) {
+      showTyping(false);
+      streamingBubble = createAssistantBubble();
+      streamingBubble.textContent = '(no response)';
+    }
+
+    conversationHistory.push({ role: 'assistant', content: fullText });
     setStatus('ready');
 
   } catch (err) {
@@ -1222,6 +1250,28 @@ async function sendToAI(userText, isGreeting) {
     sendBtn.disabled   = false;
     chatInput.focus();
   }
+}
+
+/* ─────────────────────────────────────────
+   Create an empty assistant bubble to stream into
+───────────────────────────────────────── */
+function createAssistantBubble() {
+  const wrap = document.createElement('div');
+  wrap.className = 'chat-msg assistant';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'chat-avatar ai-avatar';
+  avatar.textContent = 'IIC';
+  avatar.setAttribute('aria-hidden', 'true');
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+  chatMessages.insertBefore(wrap, typingEl);
+  scrollToBottom();
+  return bubble;
 }
 
 /* ─────────────────────────────────────────
