@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson Planner — Coordinated Learning Systems</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+  <style>
+    /* ── Lesson Planner layout overrides ── */
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app-topbar {
+      flex: 0 0 auto;
+    }
+
+    .app-body {
+      flex: 1 1 auto;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Left context pane ── */
+    .context-pane {
+      width: 320px;
+      flex: 0 0 320px;
+      background: var(--color-evergreen);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 3px solid var(--color-gold);
+    }
+
+    .context-pane-header {
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.15);
+      flex: 0 0 auto;
+    }
+
+    .context-pane-header h2 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-gold);
+      margin: 0 0 .75rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .classroom-select-wrap {
+      position: relative;
+    }
+
+    .classroom-select-wrap select {
+      width: 100%;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.3);
+      color: #fff;
+      border-radius: var(--radius-md);
+      padding: .5rem .75rem;
+      font-family: var(--font-body);
+      font-size: .875rem;
+      appearance: none;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+
+    .classroom-select-wrap select:focus {
+      outline: none;
+      border-color: var(--color-gold);
+      background: rgba(255,255,255,.15);
+    }
+
+    .classroom-select-wrap select option {
+      background: var(--color-evergreen);
+      color: #fff;
+    }
+
+    .classroom-select-wrap::after {
+      content: "▾";
+      position: absolute;
+      right: .75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--color-gold);
+      font-size: .8rem;
+    }
+
+    /* ── Context scroll body ── */
+    .context-body {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 1rem 1.25rem 1.5rem;
+    }
+
+    .context-body::-webkit-scrollbar { width: 4px; }
+    .context-body::-webkit-scrollbar-track { background: transparent; }
+    .context-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 4px; }
+
+    /* Empty / loading states */
+    .context-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      height: 100%;
+      gap: .75rem;
+      color: rgba(255,255,255,.5);
+      padding: 2rem;
+    }
+
+    .context-placeholder svg {
+      opacity: .4;
+    }
+
+    .context-placeholder p {
+      font-size: .85rem;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Context sections */
+    .ctx-section {
+      margin-bottom: 1.25rem;
+    }
+
+    .ctx-section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--color-gold);
+      margin: 0 0 .5rem;
+    }
+
+    .ctx-teacher-name {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 .2rem;
+    }
+
+    .ctx-meta {
+      font-size: .8rem;
+      color: rgba(255,255,255,.65);
+      margin: 0;
+    }
+
+    /* Chip tags inside context pane */
+    .ctx-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .35rem;
+    }
+
+    .ctx-chip {
+      display: inline-block;
+      font-size: .72rem;
+      padding: .2rem .55rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      color: rgba(255,255,255,.85);
+      border: 1px solid rgba(255,255,255,.2);
+      white-space: nowrap;
+    }
+
+    .ctx-chip.accent {
+      background: rgba(207,196,147,.15);
+      border-color: rgba(207,196,147,.4);
+      color: var(--color-gold);
+    }
+
+    /* Resource list in context pane */
+    .ctx-resource-category {
+      margin-bottom: .75rem;
+    }
+
+    .ctx-resource-category-name {
+      font-size: .7rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.45);
+      margin: 0 0 .3rem;
+    }
+
+    .ctx-resource-item {
+      font-size: .8rem;
+      color: rgba(255,255,255,.8);
+      padding: .2rem 0 .2rem .6rem;
+      border-left: 2px solid rgba(255,255,255,.15);
+      margin-bottom: .15rem;
+      line-height: 1.35;
+    }
+
+    .ctx-resource-item span {
+      display: block;
+      font-size: .72rem;
+      color: rgba(255,255,255,.4);
+      margin-top: .1rem;
+    }
+
+    /* Instructional context note */
+    .ctx-note {
+      font-size: .8rem;
+      color: rgba(255,255,255,.75);
+      line-height: 1.55;
+      margin: 0;
+      padding: .6rem .75rem;
+      background: rgba(255,255,255,.07);
+      border-radius: var(--radius-md);
+      border-left: 3px solid var(--color-gold);
+    }
+
+    /* ── Right chat pane ── */
+    .chat-pane {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--color-sand);
+    }
+
+    .chat-header {
+      flex: 0 0 auto;
+      padding: 1rem 1.5rem;
+      background: #fff;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .chat-header-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 40px;
+    }
+
+    .chat-header-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #fff;
+    }
+
+    .chat-header-text h3 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      margin: 0 0 .1rem;
+    }
+
+    .chat-header-text p {
+      font-size: .8rem;
+      color: var(--color-text-muted);
+      margin: 0;
+    }
+
+    .chat-header-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .75rem;
+      color: var(--color-text-muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ccc;
+      transition: background .3s;
+    }
+
+    .status-dot.active { background: #22c55e; }
+    .status-dot.thinking { background: var(--color-gold); animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .4; }
+    }
+
+    /* ── Chat messages area ── */
+    .chat-messages {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 6px; }
+
+    /* Chat bubbles */
+    .chat-msg {
+      display: flex;
+      gap: .75rem;
+      max-width: 78%;
+      animation: fadeSlideUp .2s ease;
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-msg.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .chat-msg.assistant {
+      align-self: flex-start;
+    }
+
+    .chat-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      flex: 0 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      margin-top: .15rem;
+    }
+
+    .chat-avatar.user-avatar {
+      background: var(--color-green);
+      color: #fff;
+    }
+
+    .chat-avatar.ai-avatar {
+      background: var(--color-evergreen);
+      color: var(--color-gold);
+      font-size: .65rem;
+      letter-spacing: .03em;
+    }
+
+    .chat-bubble {
+      padding: .75rem 1rem;
+      border-radius: 1rem;
+      font-size: .9rem;
+      line-height: 1.6;
+      color: var(--color-text-primary);
+      max-width: 100%;
+    }
+
+    .chat-msg.user .chat-bubble {
+      background: var(--color-green);
+      color: #fff;
+      border-bottom-right-radius: .25rem;
+    }
+
+    .chat-msg.assistant .chat-bubble {
+      background: #fff;
+      border: 1px solid var(--color-border);
+      border-bottom-left-radius: .25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    /* Markdown-ish formatting inside assistant bubble */
+    .chat-bubble p { margin: 0 0 .6em; }
+    .chat-bubble p:last-child { margin-bottom: 0; }
+    .chat-bubble strong { font-weight: 700; }
+    .chat-bubble em { font-style: italic; }
+    .chat-bubble ul, .chat-bubble ol { margin: .4em 0 .6em 1.2em; padding: 0; }
+    .chat-bubble li { margin-bottom: .25em; }
+    .chat-bubble h3 {
+      font-family: var(--font-display);
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--color-green);
+      margin: .8em 0 .3em;
+    }
+    .chat-bubble h3:first-child { margin-top: 0; }
+    .chat-bubble code {
+      background: var(--color-sand);
+      padding: .1em .35em;
+      border-radius: 3px;
+      font-size: .85em;
+      font-family: monospace;
+    }
+    .chat-bubble hr {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: .75em 0;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: none;
+      align-self: flex-start;
+      align-items: center;
+      gap: .75rem;
+    }
+
+    .typing-indicator.visible { display: flex; }
+
+    .typing-dots {
+      background: #fff;
+      border: 1px solid var(--color-border);
+      border-radius: 1rem;
+      border-bottom-left-radius: .25rem;
+      padding: .6rem .9rem;
+      display: flex;
+      gap: .3rem;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+
+    .typing-dots span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-text-muted);
+      animation: dotBounce 1.2s infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: .2s; }
+    .typing-dots span:nth-child(3) { animation-delay: .4s; }
+
+    @keyframes dotBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: .5; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── Chat input area ── */
+    .chat-input-area {
+      flex: 0 0 auto;
+      padding: 1rem 1.5rem 1.25rem;
+      background: #fff;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: .75rem;
+      align-items: flex-end;
+    }
+
+    .chat-textarea-wrap {
+      flex: 1 1 auto;
+    }
+
+    #chat-input {
+      width: 100%;
+      min-height: 52px;
+      max-height: 160px;
+      resize: none;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: .75rem 1rem;
+      font-family: var(--font-body);
+      font-size: .9rem;
+      color: var(--color-text-primary);
+      background: var(--color-sand);
+      transition: border-color .15s, box-shadow .15s;
+      line-height: 1.5;
+      overflow-y: auto;
+    }
+
+    #chat-input:focus {
+      outline: none;
+      border-color: var(--color-green);
+      box-shadow: 0 0 0 3px rgba(0, 103, 71, .1);
+      background: #fff;
+    }
+
+    #chat-input::placeholder { color: var(--color-text-muted); }
+    #chat-input:disabled { opacity: .5; cursor: not-allowed; }
+
+    .send-btn {
+      flex: 0 0 auto;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--color-green);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, transform .1s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover:not(:disabled) { background: var(--color-evergreen); transform: scale(1.05); }
+    .send-btn:active:not(:disabled) { transform: scale(.97); }
+    .send-btn:disabled { background: var(--color-border); cursor: not-allowed; }
+
+    .send-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #fff;
+    }
+
+    .chat-input-hint {
+      font-size: .72rem;
+      color: var(--color-text-muted);
+      margin-top: .4rem;
+      padding-left: .25rem;
+    }
+
+    /* ── No-classroom state for chat pane ── */
+    .chat-empty-state {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      color: var(--color-text-muted);
+      padding: 3rem;
+      text-align: center;
+    }
+
+    .chat-empty-state svg {
+      opacity: .3;
+    }
+
+    .chat-empty-state h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin: 0;
+    }
+
+    .chat-empty-state p {
+      font-size: .9rem;
+      max-width: 360px;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    /* ── Error toast ── */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: #dc2626;
+      color: #fff;
+      padding: .7rem 1.25rem;
+      border-radius: var(--radius-lg);
+      font-size: .85rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity .25s, transform .25s;
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Responsive touch-ups ── */
+    @media (max-width: 768px) {
+      .context-pane { width: 260px; flex: 0 0 260px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     TOP BAR
+════════════════════════════════════════════ -->
+<header class="app-topbar">
+  <div class="topbar-inner">
+    <div class="topbar-brand">
+      <div class="brand-lockup">
+        <span class="brand-primary">CLS</span>
+        <span class="brand-divider" aria-hidden="true">|</span>
+        <span class="brand-secondary">Lesson Planner</span>
+      </div>
+    </div>
+    <nav class="topbar-nav">
+      <a href="resource-mapping.html" class="nav-link">Resource Mapping</a>
+      <a href="lesson-planner.html" class="nav-link active">Lesson Planner</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     APP BODY: Context Pane + Chat Pane
+════════════════════════════════════════════ -->
+<div class="app-body">
+
+  <!-- ── LEFT: Context pane ── -->
+  <aside class="context-pane" id="context-pane">
+    <div class="context-pane-header">
+      <h2>Classroom Context</h2>
+      <div class="classroom-select-wrap">
+        <select id="classroom-select" aria-label="Select a classroom">
+          <option value="">— Select a classroom —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="context-body" id="context-body">
+      <div class="context-placeholder" id="context-placeholder">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+        </svg>
+        <p>Select a classroom above to load resources, accommodations, and context into the session.</p>
+      </div>
+      <!-- Context sections injected here by JS -->
+    </div>
+  </aside>
+
+  <!-- ── RIGHT: Chat pane ── -->
+  <main class="chat-pane" id="chat-pane">
+
+    <!-- Chat header (populated when classroom selected) -->
+    <div class="chat-header" id="chat-header">
+      <div class="chat-header-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="chat-header-text">
+        <h3 id="chat-title">Instructional Intelligence Coordination</h3>
+        <p id="chat-subtitle">Select a classroom to begin your session</p>
+      </div>
+      <div class="chat-header-badge">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-label">Not connected</span>
+      </div>
+    </div>
+
+    <!-- Empty state (shown before classroom selected) -->
+    <div class="chat-empty-state" id="chat-empty-state">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <h3>Ready when you are</h3>
+      <p>Choose a classroom from the panel on the left. Your resources, accommodations, and instructional notes will load automatically — then start talking with your planning assistant.</p>
+    </div>
+
+    <!-- Chat messages (hidden until classroom selected) -->
+    <div class="chat-messages" id="chat-messages" style="display:none;">
+      <!-- Messages injected here -->
+      <div class="typing-indicator" id="typing-indicator">
+        <div class="chat-avatar ai-avatar">IIC</div>
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat input (hidden until classroom selected) -->
+    <div class="chat-input-area" id="chat-input-area" style="display:none;">
+      <div class="chat-input-row">
+        <div class="chat-textarea-wrap">
+          <textarea
+            id="chat-input"
+            placeholder="Ask about lesson design, pacing, differentiation strategies…"
+            rows="1"
+            disabled
+          ></textarea>
+        </div>
+        <button class="send-btn" id="send-btn" disabled aria-label="Send message">
+          <svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+        </button>
+      </div>
+      <div class="chat-input-hint">Press <strong>Enter</strong> to send &nbsp;·&nbsp; <strong>Shift+Enter</strong> for a new line</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Error toast -->
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<!-- ═══════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+/* ─────────────────────────────────────────
+   Supabase init
+───────────────────────────────────────── */
+const SUPABASE_URL  = 'https://akujnbqovzlzvrpqdtfd.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrdWpuYnFvdnpsenZycHFkdGZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjIyNzgsImV4cCI6MjA5NDQzODI3OH0.dC36a722RNIwqSG3Dq9XcVxzNwtWH9ovnufZiYu4XBY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/* ─────────────────────────────────────────
+   State
+───────────────────────────────────────── */
+let currentClassroom = null;
+let conversationHistory = [];
+let isThinking = false;
+
+/* ─────────────────────────────────────────
+   DOM refs
+───────────────────────────────────────── */
+const selectEl       = document.getElementById('classroom-select');
+const contextBody    = document.getElementById('context-body');
+const placeholder    = document.getElementById('context-placeholder');
+const chatEmptyState = document.getElementById('chat-empty-state');
+const chatMessages   = document.getElementById('chat-messages');
+const chatInputArea  = document.getElementById('chat-input-area');
+const chatInput      = document.getElementById('chat-input');
+const sendBtn        = document.getElementById('send-btn');
+const typingEl       = document.getElementById('typing-indicator');
+const statusDot      = document.getElementById('status-dot');
+const statusLabel    = document.getElementById('status-label');
+const chatTitle      = document.getElementById('chat-title');
+const chatSubtitle   = document.getElementById('chat-subtitle');
+const toastEl        = document.getElementById('toast');
+
+/* ─────────────────────────────────────────
+   Toast
+───────────────────────────────────────── */
+function showToast(msg, duration = 4000) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), duration);
+}
+
+/* ─────────────────────────────────────────
+   Status indicator
+───────────────────────────────────────── */
+function setStatus(state) {
+  // state: 'idle' | 'ready' | 'thinking'
+  statusDot.className = 'status-dot';
+  if (state === 'ready') {
+    statusDot.classList.add('active');
+    statusLabel.textContent = 'Ready';
+  } else if (state === 'thinking') {
+    statusDot.classList.add('thinking');
+    statusLabel.textContent = 'Thinking…';
+  } else {
+    statusLabel.textContent = 'Not connected';
+  }
+}
+
+/* ─────────────────────────────────────────
+   Load classrooms into dropdown
+───────────────────────────────────────── */
+async function loadClassrooms() {
+  const { data, error } = await sb
+    .from('classrooms')
+    .select('id, teacher_name, school_name, grade_level, subject')
+    .order('teacher_name');
+
+  if (error) { showToast('Could not load classrooms.'); return; }
+
+  data.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.teacher_name} — ${c.grade_level} ${c.subject}`;
+    selectEl.appendChild(opt);
+  });
+}
+
+/* ─────────────────────────────────────────
+   Helpers: escape / simple markdown
+───────────────────────────────────────── */
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  // Very lightweight — enough for lesson plans
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // headings
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,  '<h3>$1</h3>')
+    // bold / italic
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+    // inline code
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    // horizontal rule
+    .replace(/^---$/gm, '<hr>')
+    // unordered list items
+    .replace(/^\s*[-•] (.+)$/gm, '<li>$1</li>')
+    // wrap consecutive <li> in <ul>
+    .replace(/(<li>.*<\/li>)/s, match => '<ul>' + match + '</ul>')
+    // numbered list
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // paragraphs: double newline → <p>
+    .split(/\n{2,}/).map(block => {
+      block = block.trim();
+      if (!block) return '';
+      if (block.startsWith('<h3>') || block.startsWith('<ul>') ||
+          block.startsWith('<ol>') || block.startsWith('<hr>') ||
+          block.startsWith('<li>')) return block;
+      // wrap orphan <li> tags
+      if (block.includes('<li>')) return '<ul>' + block + '</ul>';
+      return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+    }).join('\n');
+}
+
+/* ─────────────────────────────────────────
+   Append a chat message bubble
+───────────────────────────────────────── */
+function appendMessage(role, content) {
+  const isUser = role === 'user';
+
+  const wrap = document.createElement('div');
+  wrap.className = `chat-msg ${isUser ? 'user' : 'assistant'}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = `chat-avatar ${isUser ? 'user-avatar' : 'ai-avatar'}`;
+  avatar.textContent = isUser ? 'T' : 'IIC';
+  avatar.setAttribute('aria-hidden', 'true');
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble';
+  if (isUser) {
+    bubble.innerHTML = escHtml(content).replace(/\n/g, '<br>');
+  } else {
+    bubble.innerHTML = renderMarkdown(content);
+  }
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(bubble);
+
+  // Insert before typing indicator
+  chatMessages.insertBefore(wrap, typingEl);
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+/* ─────────────────────────────────────────
+   Show / hide typing indicator
+───────────────────────────────────────── */
+function showTyping(show) {
+  typingEl.classList.toggle('visible', show);
+  if (show) scrollToBottom();
+}
+
+/* ─────────────────────────────────────────
+   Build context display from classroom data
+───────────────────────────────────────── */
+function buildContextPanel(classroom, resources, notes) {
+  // Clear existing context (keep placeholder ref)
+  const oldSections = contextBody.querySelectorAll('.ctx-section');
+  oldSections.forEach(s => s.remove());
+  placeholder.style.display = 'none';
+
+  // ── Teacher / class info
+  const infoSection = makeSection();
+  infoSection.innerHTML = `
+    <p class="ctx-section-label">Classroom</p>
+    <p class="ctx-teacher-name">${escHtml(classroom.teacher_name)}</p>
+    <p class="ctx-meta">${escHtml(classroom.school_name)}</p>
+    <p class="ctx-meta">${escHtml(classroom.grade_level)} &nbsp;·&nbsp; ${escHtml(classroom.subject)}</p>
+  `;
+  contextBody.appendChild(infoSection);
+
+  // ── Devices & ecosystem
+  const devSection = makeSection();
+  let devHtml = '<p class="ctx-section-label">Technology</p><div class="ctx-chips">';
+  if (classroom.digital_ecosystem) {
+    devHtml += `<span class="ctx-chip accent">${escHtml(classroom.digital_ecosystem)}</span>`;
+  }
+  if (Array.isArray(classroom.available_devices)) {
+    classroom.available_devices.forEach(d => {
+      devHtml += `<span class="ctx-chip">${escHtml(d)}</span>`;
+    });
+  }
+  devHtml += '</div>';
+  devSection.innerHTML = devHtml;
+  contextBody.appendChild(devSection);
+
+  // ── Platforms / tools
+  if (Array.isArray(classroom.available_platforms) && classroom.available_platforms.length) {
+    const platSection = makeSection();
+    let platHtml = '<p class="ctx-section-label">Platforms & Tools</p><div class="ctx-chips">';
+    classroom.available_platforms.forEach(p => {
+      platHtml += `<span class="ctx-chip">${escHtml(p)}</span>`;
+    });
+    platHtml += '</div>';
+    platSection.innerHTML = platHtml;
+    contextBody.appendChild(platSection);
+  }
+
+  // ── Accommodation flags
+  if (Array.isArray(classroom.accommodation_flags) && classroom.accommodation_flags.length) {
+    const accSection = makeSection();
+    let accHtml = '<p class="ctx-section-label">Student Needs</p><div class="ctx-chips">';
+    classroom.accommodation_flags.forEach(a => {
+      accHtml += `<span class="ctx-chip accent">${escHtml(a)}</span>`;
+    });
+    accHtml += '</div>';
+    accSection.innerHTML = accHtml;
+    contextBody.appendChild(accSection);
+  }
+
+  // ── Resources grouped by category
+  if (resources.length) {
+    const resSection = makeSection();
+    let resHtml = '<p class="ctx-section-label">Resources</p>';
+
+    const grouped = {};
+    resources.forEach(r => {
+      if (!grouped[r.category]) grouped[r.category] = [];
+      grouped[r.category].push(r);
+    });
+
+    Object.entries(grouped).forEach(([cat, items]) => {
+      resHtml += `<div class="ctx-resource-category">`;
+      resHtml += `<p class="ctx-resource-category-name">${escHtml(cat)}</p>`;
+      items.forEach(item => {
+        resHtml += `<div class="ctx-resource-item">
+          ${escHtml(item.resource_name)}
+          ${item.notes ? `<span>${escHtml(item.notes)}</span>` : ''}
+        </div>`;
+      });
+      resHtml += `</div>`;
+    });
+
+    resSection.innerHTML = resHtml;
+    contextBody.appendChild(resSection);
+  }
+
+  // ── Instructional context note
+  const instrNote = notes.find(n => n.note_type === 'instructional_context');
+  const supportNote = notes.find(n => n.note_type === 'student_support');
+
+  if (instrNote || supportNote) {
+    const noteSection = makeSection();
+    let noteHtml = '<p class="ctx-section-label">Context Notes</p>';
+    if (instrNote) {
+      noteHtml += `<p class="ctx-note">${escHtml(instrNote.content)}</p>`;
+    }
+    if (supportNote) {
+      noteHtml += `<p class="ctx-note" style="margin-top:.5rem">${escHtml(supportNote.content)}</p>`;
+    }
+    noteSection.innerHTML = noteHtml;
+    contextBody.appendChild(noteSection);
+  }
+}
+
+function makeSection() {
+  const s = document.createElement('div');
+  s.className = 'ctx-section';
+  return s;
+}
+
+/* ─────────────────────────────────────────
+   Build compact system-prompt context string
+───────────────────────────────────────── */
+function buildContextString(classroom, resources, notes) {
+  const lines = [];
+
+  lines.push(`CLASSROOM CONTEXT`);
+  lines.push(`Teacher: ${classroom.teacher_name}`);
+  lines.push(`School: ${classroom.school_name}`);
+  lines.push(`Grade / Subject: ${classroom.grade_level} — ${classroom.subject}`);
+
+  if (classroom.digital_ecosystem) {
+    lines.push(`Digital Ecosystem: ${classroom.digital_ecosystem}`);
+  }
+
+  if (Array.isArray(classroom.available_devices) && classroom.available_devices.length) {
+    lines.push(`Available Devices: ${classroom.available_devices.join(', ')}`);
+  }
+
+  if (Array.isArray(classroom.available_platforms) && classroom.available_platforms.length) {
+    lines.push(`Platforms & Tools: ${classroom.available_platforms.join(', ')}`);
+  }
+
+  if (Array.isArray(classroom.accommodation_flags) && classroom.accommodation_flags.length) {
+    lines.push(`Student Needs / Accommodations: ${classroom.accommodation_flags.join(', ')}`);
+  }
+
+  if (resources.length) {
+    lines.push(`\nCLASSROOM RESOURCES`);
+    const grouped = {};
+    resources.forEach(r => {
+      if (!grouped[r.category]) grouped[r.category] = [];
+      grouped[r.category].push(r.resource_name + (r.notes ? ` (${r.notes})` : ''));
+    });
+    Object.entries(grouped).forEach(([cat, items]) => {
+      lines.push(`${cat}: ${items.join(' | ')}`);
+    });
+  }
+
+  const instrNote  = notes.find(n => n.note_type === 'instructional_context');
+  const supportNote = notes.find(n => n.note_type === 'student_support');
+
+  if (instrNote) {
+    lines.push(`\nINSTRUCTIONAL CONTEXT\n${instrNote.content}`);
+  }
+  if (supportNote) {
+    lines.push(`\nSTUDENT SUPPORT DETAILS\n${supportNote.content}`);
+  }
+
+  return lines.join('\n');
+}
+
+/* ─────────────────────────────────────────
+   Classroom selected → fetch data → init session
+───────────────────────────────────────── */
+selectEl.addEventListener('change', async () => {
+  const id = selectEl.value;
+  if (!id) {
+    resetToEmpty();
+    return;
+  }
+
+  // Fetch classroom
+  const { data: classrooms, error: cErr } = await sb
+    .from('classrooms')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (cErr || !classrooms) { showToast('Could not load classroom data.'); return; }
+
+  // Fetch resources
+  const { data: resources, error: rErr } = await sb
+    .from('classroom_resources')
+    .select('*')
+    .eq('classroom_id', id)
+    .order('category');
+
+  // Fetch notes
+  const { data: notes, error: nErr } = await sb
+    .from('classroom_notes')
+    .select('*')
+    .eq('classroom_id', id);
+
+  if (rErr || nErr) { showToast('Could not load all classroom data.'); }
+
+  currentClassroom = {
+    data: classrooms,
+    resources: resources || [],
+    notes: notes || [],
+    contextString: buildContextString(classrooms, resources || [], notes || []),
+  };
+
+  // Build left panel
+  buildContextPanel(classrooms, resources || [], notes || []);
+
+  // Update chat header
+  chatTitle.textContent = `${classrooms.teacher_name}'s Classroom`;
+  chatSubtitle.textContent = `${classrooms.grade_level} ${classrooms.subject} — ${classrooms.school_name}`;
+
+  // Show chat UI
+  chatEmptyState.style.display = 'none';
+  chatMessages.style.display   = 'flex';
+  chatInputArea.style.display  = 'block';
+
+  // Clear any previous conversation
+  const oldMsgs = chatMessages.querySelectorAll('.chat-msg');
+  oldMsgs.forEach(m => m.remove());
+  conversationHistory = [];
+
+  // Enable input
+  chatInput.disabled = false;
+  sendBtn.disabled   = false;
+  chatInput.focus();
+
+  // Set status
+  setStatus('thinking');
+
+  // Send initial greeting request to Edge Function
+  await sendToAI(null, true);
+});
+
+/* ─────────────────────────────────────────
+   Reset to empty state
+───────────────────────────────────────── */
+function resetToEmpty() {
+  currentClassroom = null;
+  conversationHistory = [];
+  chatEmptyState.style.display = 'flex';
+  chatMessages.style.display   = 'none';
+  chatInputArea.style.display  = 'none';
+  chatInput.disabled = true;
+  sendBtn.disabled   = true;
+  chatTitle.textContent    = 'Instructional Intelligence Coordination';
+  chatSubtitle.textContent = 'Select a classroom to begin your session';
+  setStatus('idle');
+
+  // Restore placeholder
+  const oldSections = contextBody.querySelectorAll('.ctx-section');
+  oldSections.forEach(s => s.remove());
+  placeholder.style.display = '';
+}
+
+/* ─────────────────────────────────────────
+   Send input on Enter (not Shift+Enter)
+───────────────────────────────────────── */
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if (!isThinking) handleSend();
+  }
+});
+
+sendBtn.addEventListener('click', () => {
+  if (!isThinking) handleSend();
+});
+
+// Auto-grow textarea
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+});
+
+/* ─────────────────────────────────────────
+   Handle user send
+───────────────────────────────────────── */
+async function handleSend() {
+  const text = chatInput.value.trim();
+  if (!text || !currentClassroom) return;
+
+  // Display user message
+  appendMessage('user', text);
+  conversationHistory.push({ role: 'user', content: text });
+
+  // Clear input
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+
+  // Send to AI
+  await sendToAI(text, false);
+}
+
+/* ─────────────────────────────────────────
+   Send to Supabase Edge Function
+───────────────────────────────────────── */
+async function sendToAI(userText, isGreeting) {
+  isThinking = true;
+  chatInput.disabled = true;
+  sendBtn.disabled   = true;
+  setStatus('thinking');
+  showTyping(true);
+
+  try {
+    const payload = {
+      classroomContext: currentClassroom.contextString,
+      messages: conversationHistory,
+      isGreeting: isGreeting,
+    };
+
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/lesson-planner`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Edge Function error: ${response.status} — ${errText}`);
+    }
+
+    const data = await response.json();
+    const assistantMessage = data.message;
+
+    showTyping(false);
+
+    // Display AI response
+    appendMessage('assistant', assistantMessage);
+    conversationHistory.push({ role: 'assistant', content: assistantMessage });
+
+    setStatus('ready');
+
+  } catch (err) {
+    showTyping(false);
+    setStatus('ready');
+    console.error('AI error:', err);
+    showToast('Something went wrong reaching the AI. Check the console for details.');
+  } finally {
+    isThinking = false;
+    chatInput.disabled = false;
+    sendBtn.disabled   = false;
+    chatInput.focus();
+  }
+}
+
+/* ─────────────────────────────────────────
+   Init
+───────────────────────────────────────── */
+loadClassrooms();
+</script>
+
+</body>
+</html>

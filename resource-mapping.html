@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resource Mapping — Coordinated Learning Systems</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aleo:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" />
+  <link rel="stylesheet" href="main.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<header class="topbar">
+  <div class="container topbar__inner">
+    <a class="topbar__brand" href="#">
+      <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+      <div class="topbar__names">
+        <span class="topbar__org">Coordinated Learning Systems</span>
+        <span class="topbar__sub">University of South Florida</span>
+      </div>
+    </a>
+    <nav class="topbar__nav" aria-label="Main navigation">
+      <a href="#" id="nav-dashboard" class="active" onclick="showView('dashboard',this)">Dashboard</a>
+      <a href="#" id="nav-add-classroom" onclick="showView('add-classroom',this)">Add Classroom</a>
+      <a href="lesson-planner.html">Lesson Planner →</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ── Hero ── -->
+<div class="page-hero">
+  <div class="container">
+    <span class="page-hero__eyebrow">Demo 1 — Instructional Intelligence Coordination</span>
+    <h1>Instructional Resource Mapping</h1>
+    <p>Build a clear picture of what each classroom has — so instruction can be designed around what teachers and students can actually use.</p>
+  </div>
+</div>
+
+<!-- ── Main content ── -->
+<main>
+
+  <!-- DASHBOARD VIEW -->
+  <div id="view-dashboard" class="section">
+    <div class="container">
+
+      <div id="alert-area"></div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+        <div>
+          <h2 style="margin:0;">Classroom Resource Map</h2>
+          <p style="margin:0.25rem 0 0; color:var(--ink-muted);">Select a classroom to view its resources, or add a new classroom below.</p>
+        </div>
+        <button class="btn btn--primary" onclick="showView('add-classroom', document.getElementById('nav-add-classroom'))">
+          + Add Classroom
+        </button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-strip" id="stats-strip">
+        <div class="stat"><div class="stat__num" id="stat-classrooms">—</div><div class="stat__label">Classrooms</div></div>
+        <div class="stat"><div class="stat__num" id="stat-resources">—</div><div class="stat__label">Resources Mapped</div></div>
+        <div class="stat"><div class="stat__num" id="stat-grades">—</div><div class="stat__label">Grade Levels</div></div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Classroom cards -->
+      <div class="card-grid" id="classroom-cards">
+        <p style="color:var(--ink-muted);">Loading classrooms…</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CLASSROOM DETAIL VIEW -->
+  <div id="view-classroom" class="section hidden">
+    <div class="container">
+      <button class="btn btn--ghost btn--sm" onclick="showView('dashboard', document.getElementById('nav-dashboard'))" style="margin-bottom:1.5rem;">
+        ← Back to Dashboard
+      </button>
+
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+        <div>
+          <h2 id="detail-teacher" style="margin:0;"></h2>
+          <p id="detail-meta" style="margin:0.2rem 0 0; color:var(--ink-muted);"></p>
+        </div>
+        <button class="btn btn--gold" id="btn-add-resource">+ Add Resource</button>
+      </div>
+
+      <!-- Ecosystem chips -->
+      <div id="detail-chips" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1.25rem;"></div>
+
+      <!-- Accommodation flags -->
+      <div id="detail-accommodations" style="margin-bottom:1.5rem;"></div>
+
+      <!-- Notes -->
+      <div id="detail-notes" style="margin-bottom:1.5rem;"></div>
+
+      <hr class="divider" />
+
+      <!-- Resources by category -->
+      <h3>Resources</h3>
+      <div id="detail-resources">
+        <p style="color:var(--ink-muted);">Loading resources…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD RESOURCE VIEW -->
+  <div id="view-add-resource" class="section hidden">
+    <div class="container" style="max-width:680px;">
+      <button class="btn btn--ghost btn--sm" id="btn-back-from-resource" style="margin-bottom:1.5rem;">
+        ← Back to Classroom
+      </button>
+      <h2>Add a Resource</h2>
+      <p style="color:var(--ink-muted);">Adding resource to: <strong id="add-resource-classroom-name"></strong></p>
+
+      <form id="form-add-resource" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="res-name">Resource Name *</label>
+            <input type="text" id="res-name" placeholder="e.g., Read&Write" required />
+          </div>
+          <div class="form-group">
+            <label for="res-category">Category *</label>
+            <select id="res-category" required>
+              <option value="">Select category…</option>
+              <option>Digital Tools</option>
+              <option>Assistive Technology</option>
+              <option>Intervention Materials</option>
+              <option>Curriculum Resources</option>
+              <option>Human Supports</option>
+              <option>Environmental Supports</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="res-notes">Notes (optional)</label>
+          <textarea id="res-notes" placeholder="How is this resource used? Who can access it? Any setup requirements?"></textarea>
+        </div>
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+          <button type="submit" class="btn btn--primary">Save Resource</button>
+          <button type="button" class="btn btn--ghost" id="btn-cancel-resource">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADD CLASSROOM VIEW -->
+  <div id="view-add-classroom" class="section hidden">
+    <div class="container" style="max-width:740px;">
+      <button class="btn btn--ghost btn--sm" onclick="showView('dashboard', document.getElementById('nav-dashboard'))" style="margin-bottom:1.5rem;">
+        ← Back to Dashboard
+      </button>
+      <h2>Add a New Classroom</h2>
+      <p style="color:var(--ink-muted);">Enter the details for this classroom. You can add individual resources after saving.</p>
+
+      <form id="form-add-classroom" novalidate>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cl-teacher">Teacher Name *</label>
+            <input type="text" id="cl-teacher" placeholder="e.g., Ms. Rodriguez" required />
+          </div>
+          <div class="form-group">
+            <label for="cl-school">School Name *</label>
+            <input type="text" id="cl-school" placeholder="e.g., Sunridge Elementary" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cl-grade">Grade Level *</label>
+            <select id="cl-grade" required>
+              <option value="">Select grade level…</option>
+              <option>Pre-K</option>
+              <option>Kindergarten</option>
+              <option>1st Grade</option>
+              <option>2nd Grade</option>
+              <option>3rd Grade</option>
+              <option>4th Grade</option>
+              <option>5th Grade</option>
+              <option>6th Grade</option>
+              <option>7th Grade</option>
+              <option>8th Grade</option>
+              <option>9th Grade</option>
+              <option>10th Grade</option>
+              <option>11th Grade</option>
+              <option>12th Grade</option>
+              <option>Post-secondary</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cl-subject">Subject *</label>
+            <input type="text" id="cl-subject" placeholder="e.g., ELA, Math, Science" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="cl-ecosystem">Primary Technology Ecosystem *</label>
+          <select id="cl-ecosystem" required>
+            <option value="">Select primary ecosystem…</option>
+            <option>Google</option>
+            <option>Microsoft</option>
+            <option>Apple</option>
+            <option>Mixed</option>
+          </select>
+          <p class="form-hint">The main platform the school runs on. Individual devices and platforms can be mixed.</p>
+        </div>
+
+        <div class="form-group">
+          <label>Available Devices <span style="font-weight:400; color:var(--ink-muted);">(check all that apply)</span></label>
+          <div class="checkbox-group">
+            <label class="checkbox-item"><input type="checkbox" name="devices" value="Chromebook" /> Chromebook</label>
+            <label class="checkbox-item"><input type="checkbox" name="devices" value="Windows PC" /> Windows PC</label>
+            <label class="checkbox-item"><input type="checkbox" name="devices" value="Mac" /> Mac</label>
+            <label class="checkbox-item"><input type="checkbox" name="devices" value="iPad" /> iPad</label>
+            <label class="checkbox-item"><input type="checkbox" name="devices" value="Android Tablet" /> Android Tablet</label>
+            <label class="checkbox-item"><input type="checkbox" name="devices" value="iPhone" /> iPhone</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Software Platforms & Tools <span style="font-weight:400; color:var(--ink-muted);">(check all that apply)</span></label>
+          <div class="checkbox-group">
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Google Workspace" /> Google Workspace</label>
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Microsoft 365" /> Microsoft 365</label>
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Apple Education" /> Apple Education</label>
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Google Classroom" /> Google Classroom</label>
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Canvas" /> Canvas</label>
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Seesaw" /> Seesaw</label>
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Schoology" /> Schoology</label>
+            <label class="checkbox-item"><input type="checkbox" name="platforms" value="Clever" /> Clever</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Student Support &amp; Accommodations <span style="font-weight:400; color:var(--ink-muted);">(check all that apply)</span></label>
+          <div class="checkbox-group">
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Extended time" /> Extended time</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Text-to-speech support" /> Text-to-speech</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Speech-to-text support" /> Speech-to-text</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Graphic organizers" /> Graphic organizers</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Preferential seating" /> Preferential seating</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Small group instruction" /> Small group instruction</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="One-on-one support" /> One-on-one support</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Visual schedules and supports" /> Visual schedules/supports</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="AAC / communication support" /> AAC / communication support</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="ELL / multilingual support" /> ELL / multilingual support</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Reduced assignment length" /> Reduced assignment length</label>
+            <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Chunked tasks / step-by-step directions" /> Chunked tasks</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="cl-support-notes">Student Support Details <span style="font-weight:400; color:var(--ink-muted);">(optional)</span></label>
+          <textarea id="cl-support-notes" placeholder="Specific accommodation notes, individual needs, anything the checkboxes don't capture…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="cl-context-notes">Instructional Context <span style="font-weight:400; color:var(--ink-muted);">(optional)</span></label>
+          <textarea id="cl-context-notes" placeholder="Outcome patterns, what students are currently working on, where they're struggling, what's been working…"></textarea>
+        </div>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+          <button type="submit" class="btn btn--primary">Save Classroom</button>
+          <button type="button" class="btn btn--ghost" onclick="showView('dashboard', document.getElementById('nav-dashboard'))">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+  <div class="container footer__inner">
+    <span>Coordinated Learning Systems &mdash; University of South Florida</span>
+    <span>Instructional Intelligence Coordination &mdash; Demo</span>
+  </div>
+</footer>
+
+<script>
+// ── Supabase setup ──────────────────────────────────────────
+const SUPABASE_URL = 'https://akujnbqovzlzvrpqdtfd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrdWpuYnFvdnpsenZycHFkdGZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjIyNzgsImV4cCI6MjA5NDQzODI3OH0.dC36a722RNIwqSG3Dq9XcVxzNwtWH9ovnufZiYu4XBY';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── State ───────────────────────────────────────────────────
+let allClassrooms = [];
+let currentClassroomId = null;
+
+// ── View router ─────────────────────────────────────────────
+function showView(viewName, navEl) {
+  document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden'));
+  document.getElementById('view-' + viewName).classList.remove('hidden');
+  document.querySelectorAll('.topbar__nav a').forEach(a => a.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
+}
+
+// ── Alert helper ────────────────────────────────────────────
+function showAlert(msg, type = 'success') {
+  const area = document.getElementById('alert-area');
+  if (!area) return;
+  area.innerHTML = `<div class="alert alert--${type}" role="alert">${msg}</div>`;
+  setTimeout(() => area.innerHTML = '', 4000);
+}
+
+// ── Category color map ───────────────────────────────────────
+const catColors = {
+  'Digital Tools': 'teal',
+  'Assistive Technology': 'green',
+  'Intervention Materials': 'gold',
+  'Curriculum Resources': 'sand',
+  'Human Supports': 'gray',
+  'Environmental Supports': 'gray',
+};
+
+// ── Load dashboard ───────────────────────────────────────────
+async function loadDashboard() {
+  const { data: classrooms, error } = await db
+    .from('classrooms')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) { console.error(error); return; }
+  allClassrooms = classrooms;
+
+  // Load resource counts
+  const { data: resources } = await db.from('classroom_resources').select('classroom_id');
+  const countMap = {};
+  (resources || []).forEach(r => {
+    countMap[r.classroom_id] = (countMap[r.classroom_id] || 0) + 1;
+  });
+
+  // Stats
+  document.getElementById('stat-classrooms').textContent = classrooms.length;
+  document.getElementById('stat-resources').textContent = (resources || []).length;
+  const grades = new Set(classrooms.map(c => c.grade_level));
+  document.getElementById('stat-grades').textContent = grades.size;
+
+  // Render cards
+  const container = document.getElementById('classroom-cards');
+  if (!classrooms.length) {
+    container.innerHTML = '<p style="color:var(--ink-muted);">No classrooms yet. Add the first one above.</p>';
+    return;
+  }
+
+  container.innerHTML = classrooms.map(c => {
+    const count = countMap[c.id] || 0;
+    const eco = c.primary_ecosystem || 'Mixed';
+    return `
+      <div class="card card--clickable" onclick="loadClassroomDetail('${c.id}')" role="button" tabindex="0"
+           onkeypress="if(event.key==='Enter') loadClassroomDetail('${c.id}')">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+          <span class="tag tag--green">${c.grade_level}</span>
+          <span class="tag tag--sand">${eco}</span>
+        </div>
+        <h3 style="margin-bottom:0.15rem;">${c.teacher_name}</h3>
+        <p style="margin:0 0 0.75rem; color:var(--ink-muted); font-size:0.875rem;">${c.school_name} &mdash; ${c.subject}</p>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:0.82rem; color:var(--ink-muted);">
+            <strong style="color:var(--usf-green);">${count}</strong> resource${count !== 1 ? 's' : ''} mapped
+          </span>
+          <span style="font-size:0.8rem; color:var(--usf-teal); font-weight:600;">View →</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Load classroom detail ────────────────────────────────────
+async function loadClassroomDetail(id) {
+  currentClassroomId = id;
+  showView('classroom', null);
+
+  const classroom = allClassrooms.find(c => c.id === id);
+  if (!classroom) return;
+
+  document.getElementById('detail-teacher').textContent = classroom.teacher_name;
+  document.getElementById('detail-meta').textContent =
+    `${classroom.school_name} · ${classroom.grade_level} · ${classroom.subject}`;
+
+  // Chips
+  const chips = document.getElementById('detail-chips');
+  const allTags = [
+    classroom.primary_ecosystem && { label: classroom.primary_ecosystem + ' Ecosystem', cls: 'tag--teal' },
+    ...(classroom.available_devices || []).map(d => ({ label: d, cls: 'tag--sand' })),
+    ...(classroom.available_platforms || []).map(p => ({ label: p, cls: 'tag--gray' })),
+  ].filter(Boolean);
+  chips.innerHTML = allTags.map(t => `<span class="tag ${t.cls}">${t.label}</span>`).join('');
+
+  // Accommodation flags
+  const flags = classroom.accommodation_flags || [];
+  const accDiv = document.getElementById('detail-accommodations');
+  if (flags.length) {
+    accDiv.innerHTML = `
+      <p style="font-size:0.78rem; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--usf-green); margin-bottom:0.5rem;">Accommodation Supports</p>
+      <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+        ${flags.map(f => `<span class="tag tag--gold">${f}</span>`).join('')}
+      </div>`;
+  } else {
+    accDiv.innerHTML = '';
+  }
+
+  // Notes
+  const { data: notes } = await db.from('classroom_notes')
+    .select('*').eq('classroom_id', id).order('note_category');
+  const notesDiv = document.getElementById('detail-notes');
+  if (notes && notes.length) {
+    notesDiv.innerHTML = notes.map(n => `
+      <div style="margin-bottom:1rem;">
+        <p style="font-size:0.78rem; font-weight:700; letter-spacing:0.09em; text-transform:uppercase; color:var(--usf-green); margin-bottom:0.35rem;">${n.note_category}</p>
+        <div class="context-note">${n.note_text}</div>
+      </div>`).join('');
+  } else {
+    notesDiv.innerHTML = '';
+  }
+
+  // Resources
+  const { data: resources } = await db.from('classroom_resources')
+    .select('*').eq('classroom_id', id).order('category');
+  const resDiv = document.getElementById('detail-resources');
+
+  if (!resources || !resources.length) {
+    resDiv.innerHTML = `
+      <p style="color:var(--ink-muted);">No resources mapped yet.</p>
+      <button class="btn btn--gold mt-1" onclick="showAddResource()">+ Add First Resource</button>`;
+  } else {
+    // Group by category
+    const grouped = {};
+    resources.forEach(r => {
+      if (!grouped[r.category]) grouped[r.category] = [];
+      grouped[r.category].push(r);
+    });
+    resDiv.innerHTML = Object.entries(grouped).map(([cat, items]) => `
+      <div style="margin-bottom:1.5rem;">
+        <p style="font-size:0.8rem; font-weight:700; letter-spacing:0.09em; text-transform:uppercase;
+                  color:var(--usf-teal); margin-bottom:0.5rem; border-bottom:1px solid var(--rule); padding-bottom:0.3rem;">
+          ${cat} <span style="font-weight:400; color:var(--ink-muted);">(${items.length})</span>
+        </p>
+        <ul class="resource-list">
+          ${items.map(r => `
+            <li class="resource-item">
+              <div>
+                <span class="resource-item__name">${r.name}</span>
+                ${r.notes ? `<p class="resource-item__notes">${r.notes}</p>` : ''}
+              </div>
+            </li>`).join('')}
+        </ul>
+      </div>`).join('');
+  }
+
+  // Wire up add resource button
+  document.getElementById('btn-add-resource').onclick = showAddResource;
+}
+
+// ── Show add resource form ───────────────────────────────────
+function showAddResource() {
+  const classroom = allClassrooms.find(c => c.id === currentClassroomId);
+  if (classroom) {
+    document.getElementById('add-resource-classroom-name').textContent = classroom.teacher_name;
+  }
+  document.getElementById('form-add-resource').reset();
+  document.getElementById('btn-back-from-resource').onclick = () => loadClassroomDetail(currentClassroomId);
+  document.getElementById('btn-cancel-resource').onclick = () => loadClassroomDetail(currentClassroomId);
+  showView('add-resource', null);
+}
+
+// ── Add resource submit ──────────────────────────────────────
+document.getElementById('form-add-resource').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('res-name').value.trim();
+  const category = document.getElementById('res-category').value;
+  const notes = document.getElementById('res-notes').value.trim();
+
+  if (!name || !category) {
+    alert('Please fill in the resource name and category.');
+    return;
+  }
+
+  const btn = e.target.querySelector('[type="submit"]');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+
+  const { error } = await db.from('classroom_resources').insert({
+    classroom_id: currentClassroomId,
+    category,
+    name,
+    notes: notes || null,
+  });
+
+  btn.textContent = 'Save Resource';
+  btn.disabled = false;
+
+  if (error) {
+    alert('Error saving resource: ' + error.message);
+    return;
+  }
+
+  showAlert('Resource added successfully.');
+  await loadClassroomDetail(currentClassroomId);
+});
+
+// ── Add classroom submit ─────────────────────────────────────
+document.getElementById('form-add-classroom').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const teacher = document.getElementById('cl-teacher').value.trim();
+  const school = document.getElementById('cl-school').value.trim();
+  const grade = document.getElementById('cl-grade').value;
+  const subject = document.getElementById('cl-subject').value.trim();
+  const ecosystem = document.getElementById('cl-ecosystem').value;
+
+  if (!teacher || !school || !grade || !subject || !ecosystem) {
+    alert('Please fill in all required fields.');
+    return;
+  }
+
+  const devices = [...document.querySelectorAll('input[name="devices"]:checked')].map(i => i.value);
+  const platforms = [...document.querySelectorAll('input[name="platforms"]:checked')].map(i => i.value);
+  const accommodations = [...document.querySelectorAll('input[name="accommodations"]:checked')].map(i => i.value);
+  const supportNotes = document.getElementById('cl-support-notes').value.trim();
+  const contextNotes = document.getElementById('cl-context-notes').value.trim();
+
+  const btn = e.target.querySelector('[type="submit"]');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+
+  const { data: newClassroom, error } = await db.from('classrooms').insert({
+    teacher_name: teacher,
+    school_name: school,
+    grade_level: grade,
+    subject,
+    primary_ecosystem: ecosystem,
+    available_devices: devices,
+    available_platforms: platforms,
+    accommodation_flags: accommodations,
+  }).select().single();
+
+  if (error) {
+    btn.textContent = 'Save Classroom';
+    btn.disabled = false;
+    alert('Error saving classroom: ' + error.message);
+    return;
+  }
+
+  // Save notes
+  const noteInserts = [];
+  if (supportNotes) noteInserts.push({ classroom_id: newClassroom.id, note_category: 'Student Support Details', note_text: supportNotes });
+  if (contextNotes) noteInserts.push({ classroom_id: newClassroom.id, note_category: 'Instructional Context', note_text: contextNotes });
+  if (noteInserts.length) await db.from('classroom_notes').insert(noteInserts);
+
+  btn.textContent = 'Save Classroom';
+  btn.disabled = false;
+
+  // Reload and go to the new classroom
+  await loadDashboard();
+  currentClassroomId = newClassroom.id;
+  showAlert('Classroom added! Now add some resources to complete the map.');
+  await loadClassroomDetail(newClassroom.id);
+});
+
+// ── Init ─────────────────────────────────────────────────────
+loadDashboard();
+</script>
+</body>
+</html>
