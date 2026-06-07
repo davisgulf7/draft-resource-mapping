@@ -84,6 +84,17 @@
     signOutHandlers.push(handler);
   }
 
+  /* ── Public: post-login landing page for a given role ── */
+  function homePathFor(role) {
+    return role === 'admin' ? 'admin-dashboard.html' : 'resource-mapping.html';
+  }
+
+  /* ── Public: redirect to the role-appropriate home page ── */
+  async function goHome() {
+    const found = await currentUser();
+    window.location.href = homePathFor(found?.profile?.role);
+  }
+
   /* ── Public: hide/show role-scoped nav items ── */
   function applyRoleGatedNav() {
     if (!cached) return;
@@ -148,6 +159,8 @@
     signOut,
     renderUserChip,
     applyRoleGatedNav,
+    homePathFor,
+    goHome,
     onSignOut,
   };
 })();

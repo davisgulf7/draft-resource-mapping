@@ -40,7 +40,7 @@
     <h1>You don't have access to that page.</h1>
     <p>Your account doesn't have permission for this area. If that seems wrong, sign in as a different account.</p>
     <div class="actions">
-      <a href="resource-mapping.html" class="btn btn--ghost">Back</a>
+      <button type="button" class="btn btn--ghost" id="back-btn">Back</button>
       <button type="button" class="btn btn--primary" id="signout-btn">Sign out</button>
     </div>
   </div>
@@ -50,6 +50,7 @@
   <script src="auth.js"></script>
   <script>
     document.getElementById('signout-btn').addEventListener('click', () => window.Auth.signOut());
+    document.getElementById('back-btn').addEventListener('click', () => window.Auth.goHome());
   </script>
 
 </body>

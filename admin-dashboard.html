@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — Coordinated Learning Systems</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+
+  <style>
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-tile {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1.1rem 1.2rem 1.2rem;
+      border-top: 4px solid var(--usf-green);
+    }
+    .stat-tile__label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin: 0 0 .3rem;
+    }
+    .stat-tile__value {
+      font-family: var(--font-display);
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: var(--usf-green);
+      line-height: 1;
+      margin: 0 0 .25rem;
+    }
+    .stat-tile__sub {
+      font-size: .78rem;
+      color: var(--ink-muted);
+      margin: 0;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .quick-tile {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.25rem 1.1rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      transition: border-color .15s, transform .15s, box-shadow .15s;
+    }
+    .quick-tile:hover {
+      border-color: var(--usf-gold);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0,0,0,.06);
+    }
+    .quick-tile__title {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--usf-green);
+      margin: 0;
+    }
+    .quick-tile__desc {
+      color: var(--ink-muted);
+      font-size: .85rem;
+      margin: 0;
+    }
+    .quick-tile__arrow {
+      margin-top: .4rem;
+      align-self: flex-end;
+      color: var(--usf-teal);
+      font-weight: 700;
+      font-size: .85rem;
+    }
+
+    .activity {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.25rem 1.1rem;
+    }
+    .activity h2 {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      color: var(--usf-green);
+      margin: 0 0 .8rem;
+    }
+    .activity__item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--rule-light);
+      font-size: .9rem;
+    }
+    .activity__item:last-child { border-bottom: none; }
+    .activity__title { color: var(--ink); font-weight: 600; }
+    .activity__meta  { color: var(--ink-muted); font-size: .78rem; }
+    .activity__empty {
+      color: var(--ink-muted);
+      font-size: .85rem;
+      padding: .5rem 0;
+    }
+
+    .skeleton-value {
+      display: inline-block;
+      width: 2.5rem;
+      height: 1.5rem;
+      background: var(--rule);
+      border-radius: 4px;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: .55; }
+      50%     { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="topbar__brand" href="admin-dashboard.html">
+        <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+        <div class="topbar__names">
+          <span class="topbar__org">Coordinated Learning Systems</span>
+          <span class="topbar__sub">University of South Florida</span>
+        </div>
+      </a>
+      <nav class="topbar__nav" aria-label="Main navigation">
+        <a href="admin-dashboard.html" class="active" data-admin-only>Admin Dashboard</a>
+        <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="school-resources.html">School Resources</a>
+        <a href="lesson-planner.html">Lesson Planner</a>
+        <a href="my-lessons.html" data-teacher-only>My Lessons</a>
+      </nav>
+      <div class="topbar__user" aria-label="Account"></div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="page-hero">
+    <div class="container">
+      <span class="page-hero__eyebrow">Admin</span>
+      <h1>School Overview</h1>
+      <p>A quick snapshot of the classrooms, teachers, resources, and saved lesson plans across the school.</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="section">
+      <div class="container">
+
+        <!-- Stat tiles -->
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <p class="stat-tile__label">Classrooms</p>
+            <p class="stat-tile__value"><span class="skeleton-value" id="stat-classrooms">&nbsp;</span></p>
+            <p class="stat-tile__sub">across all grade levels</p>
+          </div>
+          <div class="stat-tile">
+            <p class="stat-tile__label">Teachers</p>
+            <p class="stat-tile__value"><span class="skeleton-value" id="stat-teachers">&nbsp;</span></p>
+            <p class="stat-tile__sub">with active accounts</p>
+          </div>
+          <div class="stat-tile">
+            <p class="stat-tile__label">School Resources</p>
+            <p class="stat-tile__value"><span class="skeleton-value" id="stat-school-resources">&nbsp;</span></p>
+            <p class="stat-tile__sub">building-wide</p>
+          </div>
+          <div class="stat-tile">
+            <p class="stat-tile__label">Classroom Resources</p>
+            <p class="stat-tile__value"><span class="skeleton-value" id="stat-classroom-resources">&nbsp;</span></p>
+            <p class="stat-tile__sub">across all classrooms</p>
+          </div>
+          <div class="stat-tile">
+            <p class="stat-tile__label">Saved Lesson Plans</p>
+            <p class="stat-tile__value"><span class="skeleton-value" id="stat-lessons">&nbsp;</span></p>
+            <p class="stat-tile__sub">across all teachers</p>
+          </div>
+        </div>
+
+        <!-- Quick access -->
+        <div class="quick-grid">
+          <a href="resource-mapping.html" class="quick-tile">
+            <h3 class="quick-tile__title">All Classrooms</h3>
+            <p class="quick-tile__desc">View the full classroom map. Add or edit any classroom's devices, platforms, accommodation flags, and resources.</p>
+            <span class="quick-tile__arrow">Go to Resource Mapping →</span>
+          </a>
+          <a href="school-resources.html" class="quick-tile">
+            <h3 class="quick-tile__title">School Resources</h3>
+            <p class="quick-tile__desc">Map building-wide resources — library, makerspace, specialists, subscriptions — that any classroom can draw from.</p>
+            <span class="quick-tile__arrow">Manage school resources →</span>
+          </a>
+          <a href="my-lessons.html" class="quick-tile">
+            <h3 class="quick-tile__title">All Lesson Plans</h3>
+            <p class="quick-tile__desc">See every lesson plan teachers have saved. Read-only — teachers own and edit their own plans.</p>
+            <span class="quick-tile__arrow">View saved lessons →</span>
+          </a>
+          <a href="lesson-planner.html" class="quick-tile">
+            <h3 class="quick-tile__title">Lesson Planner</h3>
+            <p class="quick-tile__desc">Open the AI lesson designer against any classroom. Useful for walking teachers through a planning session.</p>
+            <span class="quick-tile__arrow">Open Lesson Planner →</span>
+          </a>
+        </div>
+
+        <!-- Recent activity -->
+        <div class="activity">
+          <h2>Recently saved lesson plans</h2>
+          <div id="recent-list">
+            <p class="activity__empty">Loading…</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+  const sb = window.sb;
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function setStat(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.outerHTML = `<span id="${id}">${value}</span>`;
+  }
+
+  /* ─────────────────────────────────────────
+     Init
+  ───────────────────────────────────────── */
+  (async () => {
+    await window.Auth.requireSession({ allowedRoles: ['admin'] });
+    window.Auth.renderUserChip();
+
+    // Parallel count queries (RLS allows admin SELECT all)
+    const [
+      classrooms,
+      teachers,
+      schoolRes,
+      classroomRes,
+      lessons,
+      recentLessons,
+    ] = await Promise.all([
+      sb.from('classrooms').select('id', { count: 'exact', head: true }),
+      sb.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher'),
+      sb.from('school_resources').select('id', { count: 'exact', head: true }),
+      sb.from('classroom_resources').select('id', { count: 'exact', head: true }),
+      sb.from('lesson_plans').select('id', { count: 'exact', head: true }),
+      sb.from('lesson_plans')
+        .select('id, title, updated_at, classrooms(teacher_name, grade_level, subject)')
+        .order('updated_at', { ascending: false })
+        .limit(6),
+    ]);
+
+    setStat('stat-classrooms',          classrooms.count          ?? 0);
+    setStat('stat-teachers',            teachers.count            ?? 0);
+    setStat('stat-school-resources',    schoolRes.count           ?? 0);
+    setStat('stat-classroom-resources', classroomRes.count        ?? 0);
+    setStat('stat-lessons',             lessons.count             ?? 0);
+
+    // Recent lesson list
+    const listEl = document.getElementById('recent-list');
+    if (recentLessons.error) {
+      listEl.innerHTML = `<p class="activity__empty">Could not load: ${escapeHtml(recentLessons.error.message)}</p>`;
+      return;
+    }
+    if (!recentLessons.data || recentLessons.data.length === 0) {
+      listEl.innerHTML = `<p class="activity__empty">No lesson plans saved yet.</p>`;
+      return;
+    }
+    listEl.innerHTML = recentLessons.data.map(l => {
+      const c = l.classrooms || {};
+      const classroomLabel = c.teacher_name
+        ? `${escapeHtml(c.teacher_name)} · ${escapeHtml(c.grade_level || '')} ${escapeHtml(c.subject || '')}`.trim()
+        : '—';
+      return `
+        <div class="activity__item">
+          <a class="activity__title" href="lesson-editor.html?id=${l.id}" style="text-decoration:none; color:var(--ink);">
+            ${escapeHtml(l.title)}
+          </a>
+          <span class="activity__meta">${classroomLabel} &nbsp;·&nbsp; ${fmtDate(l.updated_at)}</span>
+        </div>
+      `;
+    }).join('');
+  })();
+  </script>
+
+</body>
+</html>

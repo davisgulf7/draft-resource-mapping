@@ -105,16 +105,17 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
+  <script src="auth.js"></script>
   <script>
     const errBox    = document.getElementById('auth-error');
     const submitBtn = document.getElementById('submit-btn');
     const form      = document.getElementById('login-form');
 
-    /* If already signed in, jump to resource-mapping. */
+    /* If already signed in, jump to the role-specific home. */
     (async () => {
       const { data: { session } } = await window.sb.auth.getSession();
       if (session?.user) {
-        window.location.href = 'resource-mapping.html';
+        await window.Auth.goHome();
       }
     })();
 
@@ -137,7 +138,7 @@
         return;
       }
 
-      window.location.href = 'resource-mapping.html';
+      await window.Auth.goHome();
     });
   </script>
 

@@ -726,7 +726,9 @@
       </div>
     </a>
     <nav class="topbar__nav" aria-label="Main navigation">
+      <a href="admin-dashboard.html" data-admin-only>Admin Dashboard</a>
       <a href="resource-mapping.html">Resource Mapping</a>
+      <a href="school-resources.html">School Resources</a>
       <a href="lesson-planner.html" class="active">Lesson Planner</a>
       <a href="my-lessons.html" data-teacher-only>My Lessons</a>
     </nav>
@@ -1038,7 +1040,9 @@ function showTyping(show) {
 /* ─────────────────────────────────────────
    Build context display from classroom data
 ───────────────────────────────────────── */
-function buildContextPanel(classroom, resources, notes) {
+function buildContextPanel(classroom, resources, notes, schoolResources) {
+  schoolResources = schoolResources || [];
+
   // Clear existing context (keep placeholder ref)
   const oldSections = contextBody.querySelectorAll('.ctx-section');
   oldSections.forEach(s => s.remove());
@@ -1057,8 +1061,8 @@ function buildContextPanel(classroom, resources, notes) {
   // ── Devices & ecosystem
   const devSection = makeSection();
   let devHtml = '<p class="ctx-section-label">Technology</p><div class="ctx-chips">';
-  if (classroom.digital_ecosystem) {
-    devHtml += `<span class="ctx-chip accent">${escHtml(classroom.digital_ecosystem)}</span>`;
+  if (classroom.primary_ecosystem) {
+    devHtml += `<span class="ctx-chip accent">${escHtml(classroom.primary_ecosystem)}</span>`;
   }
   if (Array.isArray(classroom.available_devices)) {
     classroom.available_devices.forEach(d => {
@@ -1093,10 +1097,10 @@ function buildContextPanel(classroom, resources, notes) {
     contextBody.appendChild(accSection);
   }
 
-  // ── Resources grouped by category
+  // ── Classroom resources grouped by category
   if (resources.length) {
     const resSection = makeSection();
-    let resHtml = '<p class="ctx-section-label">Resources</p>';
+    let resHtml = '<p class="ctx-section-label">Classroom Resources</p>';
 
     const grouped = {};
     resources.forEach(r => {
@@ -1109,7 +1113,7 @@ function buildContextPanel(classroom, resources, notes) {
       resHtml += `<p class="ctx-resource-category-name">${escHtml(cat)}</p>`;
       items.forEach(item => {
         resHtml += `<div class="ctx-resource-item">
-          ${escHtml(item.resource_name)}
+          ${escHtml(item.name)}
           ${item.notes ? `<span>${escHtml(item.notes)}</span>` : ''}
         </div>`;
       });
@@ -1120,18 +1124,45 @@ function buildContextPanel(classroom, resources, notes) {
     contextBody.appendChild(resSection);
   }
 
-  // ── Instructional context note
-  const instrNote = notes.find(n => n.note_type === 'instructional_context');
-  const supportNote = notes.find(n => n.note_type === 'student_support');
+  // ── School-wide resources (building-wide, admin-managed)
+  if (schoolResources.length) {
+    const swSection = makeSection();
+    let swHtml = '<p class="ctx-section-label">School-wide Resources</p>';
+
+    const grouped = {};
+    schoolResources.forEach(r => {
+      if (!grouped[r.category]) grouped[r.category] = [];
+      grouped[r.category].push(r);
+    });
+
+    Object.entries(grouped).forEach(([cat, items]) => {
+      swHtml += `<div class="ctx-resource-category">`;
+      swHtml += `<p class="ctx-resource-category-name">${escHtml(cat)}</p>`;
+      items.forEach(item => {
+        swHtml += `<div class="ctx-resource-item">
+          ${escHtml(item.name)}
+          ${item.notes ? `<span>${escHtml(item.notes)}</span>` : ''}
+        </div>`;
+      });
+      swHtml += `</div>`;
+    });
+
+    swSection.innerHTML = swHtml;
+    contextBody.appendChild(swSection);
+  }
+
+  // ── Instructional context notes (the form stored them under "Instructional Context" / "Student Support Details")
+  const instrNote   = notes.find(n => n.note_category === 'Instructional Context');
+  const supportNote = notes.find(n => n.note_category === 'Student Support Details');
 
   if (instrNote || supportNote) {
     const noteSection = makeSection();
     let noteHtml = '<p class="ctx-section-label">Context Notes</p>';
     if (instrNote) {
-      noteHtml += `<p class="ctx-note">${escHtml(instrNote.content)}</p>`;
+      noteHtml += `<p class="ctx-note">${escHtml(instrNote.note_text)}</p>`;
     }
     if (supportNote) {
-      noteHtml += `<p class="ctx-note" style="margin-top:.5rem">${escHtml(supportNote.content)}</p>`;
+      noteHtml += `<p class="ctx-note" style="margin-top:.5rem">${escHtml(supportNote.note_text)}</p>`;
     }
     noteSection.innerHTML = noteHtml;
     contextBody.appendChild(noteSection);
@@ -1147,7 +1178,8 @@ function makeSection() {
 /* ─────────────────────────────────────────
    Build compact system-prompt context string
 ───────────────────────────────────────── */
-function buildContextString(classroom, resources, notes) {
+function buildContextString(classroom, resources, notes, schoolResources) {
+  schoolResources = schoolResources || [];
   const lines = [];
 
   lines.push(`CLASSROOM CONTEXT`);
@@ -1155,8 +1187,8 @@ function buildContextString(classroom, resources, notes) {
   lines.push(`School: ${classroom.school_name}`);
   lines.push(`Grade / Subject: ${classroom.grade_level} — ${classroom.subject}`);
 
-  if (classroom.digital_ecosystem) {
-    lines.push(`Digital Ecosystem: ${classroom.digital_ecosystem}`);
+  if (classroom.primary_ecosystem) {
+    lines.push(`Digital Ecosystem: ${classroom.primary_ecosystem}`);
   }
 
   if (Array.isArray(classroom.available_devices) && classroom.available_devices.length) {
@@ -1176,21 +1208,33 @@ function buildContextString(classroom, resources, notes) {
     const grouped = {};
     resources.forEach(r => {
       if (!grouped[r.category]) grouped[r.category] = [];
-      grouped[r.category].push(r.resource_name + (r.notes ? ` (${r.notes})` : ''));
+      grouped[r.category].push(r.name + (r.notes ? ` (${r.notes})` : ''));
     });
     Object.entries(grouped).forEach(([cat, items]) => {
       lines.push(`${cat}: ${items.join(' | ')}`);
     });
   }
 
-  const instrNote  = notes.find(n => n.note_type === 'instructional_context');
-  const supportNote = notes.find(n => n.note_type === 'student_support');
+  if (schoolResources.length) {
+    lines.push(`\nSCHOOL-WIDE RESOURCES (available to every classroom in this school — admin-managed)`);
+    const grouped = {};
+    schoolResources.forEach(r => {
+      if (!grouped[r.category]) grouped[r.category] = [];
+      grouped[r.category].push(r.name + (r.notes ? ` (${r.notes})` : ''));
+    });
+    Object.entries(grouped).forEach(([cat, items]) => {
+      lines.push(`${cat}: ${items.join(' | ')}`);
+    });
+  }
+
+  const instrNote   = notes.find(n => n.note_category === 'Instructional Context');
+  const supportNote = notes.find(n => n.note_category === 'Student Support Details');
 
   if (instrNote) {
-    lines.push(`\nINSTRUCTIONAL CONTEXT\n${instrNote.content}`);
+    lines.push(`\nINSTRUCTIONAL CONTEXT\n${instrNote.note_text}`);
   }
   if (supportNote) {
-    lines.push(`\nSTUDENT SUPPORT DETAILS\n${supportNote.content}`);
+    lines.push(`\nSTUDENT SUPPORT DETAILS\n${supportNote.note_text}`);
   }
 
   return lines.join('\n');
@@ -1206,39 +1250,39 @@ selectEl.addEventListener('change', async () => {
     return;
   }
 
-  // Fetch classroom
-  const { data: classrooms, error: cErr } = await sb
-    .from('classrooms')
-    .select('*')
-    .eq('id', id)
-    .single();
+  // Fetch classroom, classroom-level resources, notes, AND school-wide
+  // resources in parallel. School resources are read-allowed for any
+  // authenticated user (RLS policy school_resources_select_all_auth).
+  const [classroomRes, resourcesRes, notesRes, schoolRes] = await Promise.all([
+    sb.from('classrooms').select('*').eq('id', id).single(),
+    sb.from('classroom_resources').select('*').eq('classroom_id', id).order('category'),
+    sb.from('classroom_notes').select('*').eq('classroom_id', id),
+    sb.from('school_resources').select('id, category, name, notes').order('category'),
+  ]);
 
-  if (cErr || !classrooms) { showToast('Could not load classroom data.'); return; }
+  if (classroomRes.error || !classroomRes.data) {
+    showToast('Could not load classroom data.');
+    return;
+  }
+  if (resourcesRes.error || notesRes.error) {
+    showToast('Could not load all classroom data.');
+  }
 
-  // Fetch resources
-  const { data: resources, error: rErr } = await sb
-    .from('classroom_resources')
-    .select('*')
-    .eq('classroom_id', id)
-    .order('category');
-
-  // Fetch notes
-  const { data: notes, error: nErr } = await sb
-    .from('classroom_notes')
-    .select('*')
-    .eq('classroom_id', id);
-
-  if (rErr || nErr) { showToast('Could not load all classroom data.'); }
+  const classroom       = classroomRes.data;
+  const resources       = resourcesRes.data || [];
+  const notes           = notesRes.data || [];
+  const schoolResources = schoolRes.data   || [];
 
   currentClassroom = {
-    data: classrooms,
-    resources: resources || [],
-    notes: notes || [],
-    contextString: buildContextString(classrooms, resources || [], notes || []),
+    data: classroom,
+    resources,
+    notes,
+    schoolResources,
+    contextString: buildContextString(classroom, resources, notes, schoolResources),
   };
 
   // Build left panel
-  buildContextPanel(classrooms, resources || [], notes || []);
+  buildContextPanel(classroom, resources, notes, schoolResources);
 
   // Update chat header
   chatTitle.textContent = `${classrooms.teacher_name}'s Classroom`;

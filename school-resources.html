@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School Resources — Coordinated Learning Systems</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+
+  <style>
+    .layout-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+    @media (max-width: 880px) {
+      .layout-2col { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.25rem 1.4rem;
+    }
+    .panel h2 {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      color: var(--usf-green);
+      margin: 0 0 .85rem;
+    }
+
+    .category-block { margin-bottom: 1.6rem; }
+    .category-block:last-child { margin-bottom: 0; }
+    .category-block h3 {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin: 0 0 .55rem;
+      padding-bottom: .25rem;
+      border-bottom: 1px solid var(--rule-light);
+    }
+
+    .resource-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .75rem;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--rule-light);
+    }
+    .resource-item:last-child { border-bottom: none; }
+    .resource-item__body {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .resource-item__name {
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0 0 .15rem;
+      line-height: 1.3;
+    }
+    .resource-item__notes {
+      font-size: .82rem;
+      color: var(--ink-muted);
+      line-height: 1.45;
+      margin: 0;
+      word-break: break-word;
+    }
+    .resource-item__delete {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-size: .75rem;
+      padding: .25rem .5rem;
+      border-radius: var(--radius);
+      align-self: center;
+    }
+    .resource-item__delete:hover {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .empty-list {
+      color: var(--ink-muted);
+      font-size: .85rem;
+      padding: .5rem 0 0;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--ink-muted);
+    }
+    .empty-state h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--usf-green);
+      margin: 0 0 .35rem;
+    }
+
+    .inline-alert {
+      padding: .55rem .75rem;
+      border-radius: var(--radius);
+      font-size: .85rem;
+      margin-bottom: .85rem;
+      display: none;
+    }
+    .inline-alert.show { display: block; }
+    .inline-alert--ok    { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .inline-alert--err   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    .read-only-hint {
+      color: var(--ink-muted);
+      font-size: .82rem;
+      margin: 0 0 1rem;
+      padding: .55rem .75rem;
+      background: var(--bg-alt);
+      border-left: 3px solid var(--usf-gold);
+      border-radius: var(--radius);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="topbar__brand" href="resource-mapping.html">
+        <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+        <div class="topbar__names">
+          <span class="topbar__org">Coordinated Learning Systems</span>
+          <span class="topbar__sub">University of South Florida</span>
+        </div>
+      </a>
+      <nav class="topbar__nav" aria-label="Main navigation">
+        <a href="admin-dashboard.html" data-admin-only>Admin Dashboard</a>
+        <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="school-resources.html" class="active">School Resources</a>
+        <a href="lesson-planner.html">Lesson Planner</a>
+        <a href="my-lessons.html" data-teacher-only>My Lessons</a>
+      </nav>
+      <div class="topbar__user" aria-label="Account"></div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="page-hero">
+    <div class="container">
+      <span class="page-hero__eyebrow">Building-wide</span>
+      <h1>School Resources</h1>
+      <p>Resources available to every classroom in the school — the library, makerspace, intervention specialists, building-wide subscriptions, and more.</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="section">
+      <div class="container">
+
+        <!-- TEACHER view: just the list -->
+        <div id="teacher-view" class="hidden">
+          <p class="read-only-hint">View-only. School admins manage building-wide resources. Talk to your admin if something's missing.</p>
+          <div class="panel">
+            <h2>Resources by category</h2>
+            <div id="resource-list-teacher"></div>
+          </div>
+        </div>
+
+        <!-- ADMIN view: form + editable list -->
+        <div id="admin-view" class="hidden">
+          <div class="layout-2col">
+
+            <!-- LEFT: Add form -->
+            <div class="panel">
+              <h2>Add a school resource</h2>
+
+              <div class="inline-alert inline-alert--ok"  id="add-ok"></div>
+              <div class="inline-alert inline-alert--err" id="add-err"></div>
+
+              <form id="add-form">
+                <div class="form-group">
+                  <label for="sr-category">Category</label>
+                  <select id="sr-category" required>
+                    <option value="">— Choose a category —</option>
+                    <option>Digital Tools</option>
+                    <option>Assistive Technology</option>
+                    <option>Intervention Materials</option>
+                    <option>Curriculum Resources</option>
+                    <option>Human Supports</option>
+                    <option>Environmental Supports</option>
+                    <option>Library</option>
+                    <option>Makerspace</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="sr-name">Name</label>
+                  <input type="text" id="sr-name" placeholder="e.g. School-wide IXL subscription" required maxlength="200" />
+                </div>
+
+                <div class="form-group">
+                  <label for="sr-notes">Notes (optional)</label>
+                  <textarea id="sr-notes" rows="3" placeholder="When it's available, who to contact, capacity, etc." maxlength="600"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn--primary" id="add-submit">Add resource</button>
+              </form>
+            </div>
+
+            <!-- RIGHT: Current resources -->
+            <div class="panel">
+              <h2>Current school resources</h2>
+              <div id="resource-list-admin"></div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+  const sb = window.sb;
+  let currentRole = null;
+
+  /* ─────────────────────────────────────────
+     Helpers
+  ───────────────────────────────────────── */
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function groupByCategory(rows) {
+    const grouped = {};
+    rows.forEach(r => {
+      const cat = (r.category || 'Other').trim() || 'Other';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(r);
+    });
+    // Sort categories alphabetically for stable display; items by name
+    const ordered = Object.keys(grouped).sort().reduce((acc, k) => {
+      acc[k] = grouped[k].slice().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+      return acc;
+    }, {});
+    return ordered;
+  }
+
+  function renderList(rows, target, canDelete) {
+    if (!rows || rows.length === 0) {
+      target.innerHTML = `
+        <div class="empty-state">
+          <h3>No school resources yet.</h3>
+          <p>${currentRole === 'admin'
+              ? 'Use the form on the left to add the first one.'
+              : 'When admin adds them they\'ll show up here.'}</p>
+        </div>
+      `;
+      return;
+    }
+
+    const grouped = groupByCategory(rows);
+    target.innerHTML = Object.entries(grouped).map(([cat, items]) => `
+      <div class="category-block">
+        <h3>${escapeHtml(cat)} (${items.length})</h3>
+        ${items.map(item => `
+          <div class="resource-item">
+            <div class="resource-item__body">
+              <p class="resource-item__name">${escapeHtml(item.name)}</p>
+              ${item.notes ? `<p class="resource-item__notes">${escapeHtml(item.notes)}</p>` : ''}
+            </div>
+            ${canDelete ? `
+              <button class="resource-item__delete"
+                      data-delete="${item.id}"
+                      data-name="${escapeHtml(item.name)}"
+                      title="Delete resource">Delete</button>
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    if (canDelete) {
+      target.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id   = btn.getAttribute('data-delete');
+          const name = btn.getAttribute('data-name') || 'this resource';
+          if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+          const { error } = await sb.from('school_resources').delete().eq('id', id);
+          if (error) { alert('Delete failed: ' + error.message); return; }
+          await loadResources();
+        });
+      });
+    }
+  }
+
+  /* ─────────────────────────────────────────
+     Load
+  ───────────────────────────────────────── */
+  async function loadResources() {
+    const { data, error } = await sb
+      .from('school_resources')
+      .select('id, category, name, notes, created_at')
+      .order('category', { ascending: true })
+      .order('name',     { ascending: true });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    if (currentRole === 'admin') {
+      renderList(data, document.getElementById('resource-list-admin'),   true);
+    } else {
+      renderList(data, document.getElementById('resource-list-teacher'), false);
+    }
+  }
+
+  /* ─────────────────────────────────────────
+     Add (admin only)
+  ───────────────────────────────────────── */
+  function wireAddForm() {
+    const form    = document.getElementById('add-form');
+    const okBox   = document.getElementById('add-ok');
+    const errBox  = document.getElementById('add-err');
+    const subBtn  = document.getElementById('add-submit');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      okBox.classList.remove('show');
+      errBox.classList.remove('show');
+
+      const category = document.getElementById('sr-category').value;
+      const name     = document.getElementById('sr-name').value.trim();
+      const notes    = document.getElementById('sr-notes').value.trim();
+
+      if (!category || !name) return;
+
+      subBtn.disabled = true;
+      subBtn.textContent = 'Saving…';
+
+      const { error } = await sb.from('school_resources').insert({
+        category,
+        name,
+        notes: notes || null,
+      });
+
+      subBtn.disabled = false;
+      subBtn.textContent = 'Add resource';
+
+      if (error) {
+        errBox.textContent = 'Could not save: ' + (error.message || 'unknown error');
+        errBox.classList.add('show');
+        return;
+      }
+
+      okBox.textContent = `Added “${name}” under ${category}.`;
+      okBox.classList.add('show');
+      form.reset();
+      await loadResources();
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     Init
+  ───────────────────────────────────────── */
+  (async () => {
+    const session = await window.Auth.requireSession();
+    currentRole = session.profile.role;
+    window.Auth.renderUserChip();
+
+    if (currentRole === 'admin') {
+      document.getElementById('admin-view').classList.remove('hidden');
+      wireAddForm();
+    } else {
+      document.getElementById('teacher-view').classList.remove('hidden');
+    }
+
+    await loadResources();
+  })();
+  </script>
+
+</body>
+</html>

@@ -190,17 +190,18 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
+  <script src="auth.js"></script>
   <script>
     const errBox    = document.getElementById('auth-error');
     const okBox     = document.getElementById('auth-success');
     const submitBtn = document.getElementById('submit-btn');
     const form      = document.getElementById('signup-form');
 
-    /* If already signed in, jump to resource-mapping. */
+    /* If already signed in, jump to the role-specific home. */
     (async () => {
       const { data: { session } } = await window.sb.auth.getSession();
       if (session?.user) {
-        window.location.href = 'resource-mapping.html';
+        await window.Auth.goHome();
       }
     })();
 
@@ -244,9 +245,11 @@
 
       /* Two possible paths:
          (a) Email confirmation is DISABLED → session is returned immediately
-         (b) Email confirmation is ENABLED → session is null, user must verify */
+         (b) Email confirmation is ENABLED → session is null, user must verify
+         Note: handle_new_user() trigger races with us; brief wait so the
+         profile row is in place before we navigate. */
       if (data?.session) {
-        window.location.href = 'resource-mapping.html';
+        setTimeout(async () => { await window.Auth.goHome(); }, 250);
       } else {
         showOk('Account created. Check your email to confirm, then sign in.');
         submitBtn.disabled = false;
