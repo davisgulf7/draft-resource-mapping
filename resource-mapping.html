@@ -7,7 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Aleo:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" />
   <link rel="stylesheet" href="main.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
 </head>
 <body>
 
@@ -26,6 +28,7 @@
       <a href="#" id="nav-add-classroom" onclick="showView('add-classroom',this)">Add Classroom</a>
       <a href="lesson-planner.html">Lesson Planner →</a>
     </nav>
+    <div class="topbar__user" aria-label="Account"></div>
   </div>
 </header>
 
@@ -283,15 +286,14 @@
 </footer>
 
 <script>
-// ── Supabase setup ──────────────────────────────────────────
-const SUPABASE_URL = 'https://akujnbqovzlzvrpqdtfd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrdWpuYnFvdnpsenZycHFkdGZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjIyNzgsImV4cCI6MjA5NDQzODI3OH0.dC36a722RNIwqSG3Dq9XcVxzNwtWH9ovnufZiYu4XBY';
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ── Supabase client comes from config.js (window.sb). Alias as db. ──
+const db = window.sb;
 
 // ── State ───────────────────────────────────────────────────
 let allClassrooms = [];
 let currentClassroomId = null;
+let currentUser = null;          // { id, email }
+let currentRole = null;          // 'teacher' | 'admin'
 
 // ── View router ─────────────────────────────────────────────
 function showView(viewName, navEl) {
@@ -548,6 +550,18 @@ document.getElementById('form-add-classroom').addEventListener('submit', async (
     return;
   }
 
+  // If signed in as a teacher, link the new classroom to this user
+  // so RLS lets them see it on subsequent reads.
+  if (currentRole === 'teacher' && currentUser) {
+    const { error: linkErr } = await db.from('classroom_teachers').insert({
+      teacher_id:   currentUser.id,
+      classroom_id: newClassroom.id,
+    });
+    if (linkErr) {
+      console.error('Could not link teacher to classroom:', linkErr);
+    }
+  }
+
   // Save notes
   const noteInserts = [];
   if (supportNotes) noteInserts.push({ classroom_id: newClassroom.id, note_category: 'Student Support Details', note_text: supportNotes });
@@ -565,7 +579,19 @@ document.getElementById('form-add-classroom').addEventListener('submit', async (
 });
 
 // ── Init ─────────────────────────────────────────────────────
-loadDashboard();
+(async () => {
+  // Gate the page on an authenticated session and load profile.
+  const { user, profile } = await window.Auth.requireSession();
+  currentUser = user;
+  currentRole = profile.role;
+
+  // Render the user chip + sign-out into the topbar.
+  window.Auth.renderUserChip();
+
+  // Rely on RLS to filter classrooms by role (admin sees all; teacher
+  // sees only those joined via classroom_teachers).
+  await loadDashboard();
+})();
 </script>
 </body>
 </html>

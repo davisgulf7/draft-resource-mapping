@@ -617,6 +617,7 @@
       <a href="resource-mapping.html">Resource Mapping</a>
       <a href="lesson-planner.html" class="active">Lesson Planner</a>
     </nav>
+    <div class="topbar__user" aria-label="Account"></div>
   </div>
 </header>
 
@@ -714,13 +715,19 @@
      SCRIPTS
 ════════════════════════════════════════════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
 <script>
 /* ─────────────────────────────────────────
-   Supabase init
+   Supabase client (from config.js) + URL/key for Edge Function call
 ───────────────────────────────────────── */
-const SUPABASE_URL  = 'https://akujnbqovzlzvrpqdtfd.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrdWpuYnFvdnpsenZycHFkdGZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjIyNzgsImV4cCI6MjA5NDQzODI3OH0.dC36a722RNIwqSG3Dq9XcVxzNwtWH9ovnufZiYu4XBY';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb           = window.sb;
+const SUPABASE_URL  = window.SUPABASE_URL;
+const SUPABASE_ANON = window.SUPABASE_ANON;
+
+/* Session state, populated by init() at the bottom of this script. */
+let currentRole = null;          // 'teacher' | 'admin'
+let currentUserId = null;
 
 /* ─────────────────────────────────────────
    State
@@ -777,6 +784,8 @@ function setStatus(state) {
    Load classrooms into dropdown
 ───────────────────────────────────────── */
 async function loadClassrooms() {
+  // RLS filters this for us: admin sees all rows; teacher sees only
+  // classrooms they're linked to via classroom_teachers.
   const { data, error } = await sb
     .from('classrooms')
     .select('id, teacher_name, school_name, grade_level, subject')
@@ -790,6 +799,15 @@ async function loadClassrooms() {
     opt.textContent = `${c.teacher_name} — ${c.grade_level} ${c.subject}`;
     selectEl.appendChild(opt);
   });
+
+  /* Teacher convenience: if they only have one classroom, auto-select it
+     and hide the dropdown. Admins always keep the dropdown. */
+  if (currentRole === 'teacher' && data.length === 1) {
+    selectEl.value = data[0].id;
+    selectEl.dispatchEvent(new Event('change'));
+    const wrap = selectEl.closest('.classroom-select-wrap');
+    if (wrap) wrap.style.display = 'none';
+  }
 }
 
 /* ─────────────────────────────────────────
@@ -1275,9 +1293,17 @@ function createAssistantBubble() {
 }
 
 /* ─────────────────────────────────────────
-   Init
+   Init — gate the page on auth, then load classrooms
 ───────────────────────────────────────── */
-loadClassrooms();
+(async () => {
+  const { user, profile } = await window.Auth.requireSession();
+  currentUserId = user.id;
+  currentRole   = profile.role;
+
+  window.Auth.renderUserChip();
+
+  await loadClassrooms();
+})();
 </script>
 
 </body>

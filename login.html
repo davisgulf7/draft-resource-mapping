@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — Coordinated Learning Systems</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+  <style>
+    body { background: var(--bg-alt); min-height: 100vh; display: flex; flex-direction: column; }
+    .auth-shell {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .auth-card {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      padding: 2.25rem 2rem 2rem;
+      width: 100%;
+      max-width: 420px;
+      border-top: 5px solid var(--usf-green);
+    }
+    .auth-card h1 {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--usf-green);
+      margin: 0 0 .35rem;
+    }
+    .auth-card p.muted {
+      color: var(--ink-muted);
+      font-size: .9rem;
+      margin: 0 0 1.5rem;
+    }
+    .auth-card .form-group { margin-bottom: 1rem; }
+    .auth-card .btn { width: 100%; padding: .8rem 1rem; font-size: .95rem; }
+    .auth-error {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius);
+      padding: .6rem .8rem;
+      font-size: .85rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .auth-error.show { display: block; }
+    .auth-footer {
+      text-align: center;
+      font-size: .85rem;
+      color: var(--ink-muted);
+      margin-top: 1.25rem;
+    }
+    .auth-footer a { color: var(--usf-green); font-weight: 600; }
+    .brand-mark {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .brand-mark span {
+      display: inline-block;
+      background: var(--usf-green);
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: .85rem;
+      letter-spacing: .1em;
+      padding: .4rem .65rem;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="auth-shell">
+    <div class="auth-card">
+      <div class="brand-mark"><span>CLS</span></div>
+      <h1>Sign in</h1>
+      <p class="muted">Coordinated Learning Systems — Instructional Intelligence Coordination</p>
+
+      <div class="auth-error" id="auth-error" role="alert" aria-live="polite"></div>
+
+      <form id="login-form" autocomplete="on">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn--primary" id="submit-btn">Sign in</button>
+      </form>
+
+      <p class="auth-footer">
+        Don't have an account yet?
+        <a href="signup.html">Sign up</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    const errBox    = document.getElementById('auth-error');
+    const submitBtn = document.getElementById('submit-btn');
+    const form      = document.getElementById('login-form');
+
+    /* If already signed in, jump to resource-mapping. */
+    (async () => {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (session?.user) {
+        window.location.href = 'resource-mapping.html';
+      }
+    })();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBox.classList.remove('show');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in…';
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const { error } = await window.sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        errBox.textContent = error.message || 'Could not sign in.';
+        errBox.classList.add('show');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in';
+        return;
+      }
+
+      window.location.href = 'resource-mapping.html';
+    });
+  </script>
+
+</body>
+</html>

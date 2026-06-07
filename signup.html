@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account — Coordinated Learning Systems</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+  <style>
+    body { background: var(--bg-alt); min-height: 100vh; display: flex; flex-direction: column; }
+    .auth-shell {
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .auth-card {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      padding: 2.25rem 2rem 2rem;
+      width: 100%;
+      max-width: 480px;
+      border-top: 5px solid var(--usf-green);
+    }
+    .auth-card h1 {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--usf-green);
+      margin: 0 0 .35rem;
+    }
+    .auth-card p.muted {
+      color: var(--ink-muted);
+      font-size: .9rem;
+      margin: 0 0 1.5rem;
+    }
+    .auth-card .form-group { margin-bottom: 1rem; }
+    .auth-card .btn { width: 100%; padding: .8rem 1rem; font-size: .95rem; }
+    .auth-error {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius);
+      padding: .6rem .8rem;
+      font-size: .85rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .auth-error.show { display: block; }
+    .auth-success {
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #a7f3d0;
+      border-radius: var(--radius);
+      padding: .6rem .8rem;
+      font-size: .85rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .auth-success.show { display: block; }
+    .auth-footer {
+      text-align: center;
+      font-size: .85rem;
+      color: var(--ink-muted);
+      margin-top: 1.25rem;
+    }
+    .auth-footer a { color: var(--usf-green); font-weight: 600; }
+    .brand-mark {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .brand-mark span {
+      display: inline-block;
+      background: var(--usf-green);
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: .85rem;
+      letter-spacing: .1em;
+      padding: .4rem .65rem;
+      border-radius: 4px;
+    }
+
+    .role-choice {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+      margin-top: .5rem;
+    }
+    .role-choice label {
+      display: block;
+      cursor: pointer;
+      border: 2px solid var(--rule);
+      border-radius: var(--radius);
+      padding: .85rem 1rem;
+      background: #fff;
+      transition: border-color .15s, background .15s;
+    }
+    .role-choice label:hover { border-color: var(--usf-gold); }
+    .role-choice input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .role-choice input[type="radio"]:checked + .role-content {
+      color: var(--usf-green);
+    }
+    .role-choice label:has(input:checked) {
+      border-color: var(--usf-green);
+      background: rgba(0, 103, 71, .04);
+    }
+    .role-content {
+      display: block;
+    }
+    .role-content strong {
+      display: block;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: .2rem;
+    }
+    .role-content small {
+      display: block;
+      font-size: .75rem;
+      color: var(--ink-muted);
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="auth-shell">
+    <div class="auth-card">
+      <div class="brand-mark"><span>CLS</span></div>
+      <h1>Create your account</h1>
+      <p class="muted">Coordinated Learning Systems — Instructional Intelligence Coordination</p>
+
+      <div class="auth-error"   id="auth-error"   role="alert" aria-live="polite"></div>
+      <div class="auth-success" id="auth-success" role="status" aria-live="polite"></div>
+
+      <form id="signup-form" autocomplete="on">
+        <div class="form-group">
+          <label for="display_name">Your name</label>
+          <input type="text" id="display_name" name="display_name" required autocomplete="name" />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" minlength="8" required autocomplete="new-password" />
+          <small class="form-hint">At least 8 characters.</small>
+        </div>
+
+        <div class="form-group">
+          <label>I am a…</label>
+          <div class="role-choice">
+            <label>
+              <input type="radio" name="role" value="teacher" checked />
+              <span class="role-content">
+                <strong>Teacher</strong>
+                <small>I work with a specific classroom or classrooms.</small>
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="role" value="admin" />
+              <span class="role-content">
+                <strong>School Admin</strong>
+                <small>I oversee classrooms and school-wide resources.</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn--primary" id="submit-btn">Create account</button>
+      </form>
+
+      <p class="auth-footer">
+        Already have an account?
+        <a href="login.html">Sign in</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    const errBox    = document.getElementById('auth-error');
+    const okBox     = document.getElementById('auth-success');
+    const submitBtn = document.getElementById('submit-btn');
+    const form      = document.getElementById('signup-form');
+
+    /* If already signed in, jump to resource-mapping. */
+    (async () => {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (session?.user) {
+        window.location.href = 'resource-mapping.html';
+      }
+    })();
+
+    function showErr(msg) {
+      okBox.classList.remove('show');
+      errBox.textContent = msg;
+      errBox.classList.add('show');
+    }
+    function showOk(msg) {
+      errBox.classList.remove('show');
+      okBox.textContent = msg;
+      okBox.classList.add('show');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBox.classList.remove('show');
+      okBox.classList.remove('show');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account…';
+
+      const display_name = document.getElementById('display_name').value.trim();
+      const email        = document.getElementById('email').value.trim();
+      const password     = document.getElementById('password').value;
+      const role         = document.querySelector('input[name="role"]:checked').value;
+
+      const { data, error } = await window.sb.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { role, display_name },
+        },
+      });
+
+      if (error) {
+        showErr(error.message || 'Could not create account.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+        return;
+      }
+
+      /* Two possible paths:
+         (a) Email confirmation is DISABLED → session is returned immediately
+         (b) Email confirmation is ENABLED → session is null, user must verify */
+      if (data?.session) {
+        window.location.href = 'resource-mapping.html';
+      } else {
+        showOk('Account created. Check your email to confirm, then sign in.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create account';
+      }
+    });
+  </script>
+
+</body>
+</html>
