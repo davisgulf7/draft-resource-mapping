@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Classroom — Coordinated Learning Systems</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+
+  <style>
+    .switcher-bar {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1rem 1.1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .switcher-bar label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin: 0;
+    }
+    .switcher-bar select {
+      padding: .5rem .65rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .9rem;
+      background: #fff;
+      min-width: 280px;
+    }
+    .switcher-bar select:focus {
+      outline: none;
+      border-color: var(--usf-green);
+      box-shadow: 0 0 0 3px rgba(0,103,71,.1);
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 1.5rem 1.6rem;
+      margin-bottom: 1.5rem;
+    }
+    .panel h2 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--usf-green);
+      margin: 0 0 1rem;
+    }
+
+    .inline-alert {
+      padding: .55rem .75rem;
+      border-radius: var(--radius);
+      font-size: .85rem;
+      margin-bottom: .85rem;
+      display: none;
+    }
+    .inline-alert.show { display: block; }
+    .inline-alert--ok    { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .inline-alert--err   { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    .resource-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .75rem;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--rule-light);
+    }
+    .resource-row:last-child { border-bottom: none; }
+    .resource-row__body { flex: 1 1 auto; min-width: 0; }
+    .resource-row__name { font-weight: 700; color: var(--ink); margin: 0 0 .1rem; line-height: 1.3; }
+    .resource-row__notes { font-size: .82rem; color: var(--ink-muted); line-height: 1.45; margin: 0; word-break: break-word; }
+    .resource-row__actions { display: flex; gap: .35rem; align-self: center; }
+    .resource-row__btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: .75rem;
+      padding: .25rem .5rem;
+      border-radius: var(--radius);
+      color: var(--ink-muted);
+    }
+    .resource-row__btn--edit:hover   { background: var(--bg-alt); color: var(--usf-green); }
+    .resource-row__btn--delete:hover { background: #fef2f2; color: #b91c1c; }
+
+    .resource-edit-form {
+      background: var(--bg-alt);
+      padding: .75rem .85rem;
+      border-radius: var(--radius);
+      margin: .35rem 0;
+    }
+    .resource-edit-form .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: .5rem;
+    }
+    .resource-edit-form label {
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin: 0 0 .15rem;
+    }
+    .resource-edit-form select,
+    .resource-edit-form input,
+    .resource-edit-form textarea {
+      width: 100%;
+      padding: .4rem .55rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .85rem;
+      background: #fff;
+    }
+    .resource-edit-form .form-actions {
+      display: flex;
+      gap: .4rem;
+      justify-content: flex-end;
+      margin-top: .55rem;
+    }
+    .resource-edit-form .btn { padding: .35rem .8rem; font-size: .8rem; }
+
+    .resource-category {
+      margin-bottom: 1.1rem;
+    }
+    .resource-category h3 {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin: 0 0 .35rem;
+      padding-bottom: .25rem;
+      border-bottom: 1px solid var(--rule-light);
+    }
+
+    .empty-msg {
+      color: var(--ink-muted);
+      font-size: .85rem;
+      padding: .5rem 0;
+    }
+
+    .save-bar {
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(to top, var(--bg-alt) 75%, rgba(237, 235, 209, 0));
+      padding: 1rem 0 1.25rem;
+      margin-top: 1rem;
+      display: flex;
+      gap: .75rem;
+      justify-content: flex-end;
+      align-items: center;
+    }
+    .save-bar__status {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      margin-right: auto;
+    }
+    .save-bar__status.dirty { color: var(--usf-gold); font-weight: 700; }
+    .save-bar__status.saved { color: #047857; font-weight: 700; }
+    .save-bar__status.error { color: #b91c1c; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="topbar__brand" href="resource-mapping.html">
+        <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+        <div class="topbar__names">
+          <span class="topbar__org">Coordinated Learning Systems</span>
+          <span class="topbar__sub">University of South Florida</span>
+        </div>
+      </a>
+      <nav class="topbar__nav" aria-label="Main navigation">
+        <a href="admin-dashboard.html" data-admin-only>Admin Dashboard</a>
+        <a href="admin-teachers.html"  data-admin-only>Teachers</a>
+        <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="my-classroom.html" class="active" data-teacher-only>My Classroom</a>
+        <a href="school-resources.html">School Resources</a>
+        <a href="lesson-planner.html">Lesson Planner</a>
+        <a href="my-lessons.html" data-teacher-only>My Lessons</a>
+      </nav>
+      <div class="topbar__user" aria-label="Account"></div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="page-hero">
+    <div class="container">
+      <span class="page-hero__eyebrow">Teacher</span>
+      <h1>My Classroom</h1>
+      <p>Edit your classroom's devices, platforms, accommodations, instructional context, and resources. The lesson planner uses everything here.</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="section">
+      <div class="container">
+
+        <!-- Switcher (only shown if teacher has >1 classroom) -->
+        <div class="switcher-bar" id="switcher-bar" style="display:none;">
+          <label for="switcher">Editing:</label>
+          <select id="switcher"></select>
+        </div>
+
+        <!-- Empty state if no classrooms -->
+        <div id="empty-state" class="panel" style="display:none;">
+          <h2>You haven't been linked to a classroom yet.</h2>
+          <p style="color:var(--ink-muted);">Go to <a href="resource-mapping.html">Resource Mapping</a> and add one, or ask your school admin to link you to an existing classroom.</p>
+        </div>
+
+        <!-- Main editor -->
+        <div id="editor" style="display:none;">
+
+          <!-- Classroom info panel -->
+          <div class="panel">
+            <h2>Classroom information</h2>
+
+            <div class="inline-alert inline-alert--ok"  id="class-ok"></div>
+            <div class="inline-alert inline-alert--err" id="class-err"></div>
+
+            <form id="classroom-form">
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="cl-teacher">Teacher name</label>
+                  <input type="text" id="cl-teacher" required />
+                </div>
+                <div class="form-group">
+                  <label for="cl-school">School name</label>
+                  <input type="text" id="cl-school" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="cl-grade">Grade level</label>
+                  <select id="cl-grade" required>
+                    <option value="">Select grade level…</option>
+                    <option>Pre-K</option>
+                    <option>Kindergarten</option>
+                    <option>1st Grade</option>
+                    <option>2nd Grade</option>
+                    <option>3rd Grade</option>
+                    <option>4th Grade</option>
+                    <option>5th Grade</option>
+                    <option>6th Grade</option>
+                    <option>7th Grade</option>
+                    <option>8th Grade</option>
+                    <option>9th Grade</option>
+                    <option>10th Grade</option>
+                    <option>11th Grade</option>
+                    <option>12th Grade</option>
+                    <option>Post-secondary</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="cl-subject">Subject</label>
+                  <input type="text" id="cl-subject" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="cl-ecosystem">Primary technology ecosystem</label>
+                <select id="cl-ecosystem" required>
+                  <option value="">Select primary ecosystem…</option>
+                  <option>Google</option>
+                  <option>Microsoft</option>
+                  <option>Apple</option>
+                  <option>Mixed</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Available devices</label>
+                <div class="checkbox-group" id="devices-group">
+                  <label class="checkbox-item"><input type="checkbox" name="devices" value="Chromebook" /> Chromebook</label>
+                  <label class="checkbox-item"><input type="checkbox" name="devices" value="Windows PC" /> Windows PC</label>
+                  <label class="checkbox-item"><input type="checkbox" name="devices" value="Mac" /> Mac</label>
+                  <label class="checkbox-item"><input type="checkbox" name="devices" value="iPad" /> iPad</label>
+                  <label class="checkbox-item"><input type="checkbox" name="devices" value="Android Tablet" /> Android Tablet</label>
+                  <label class="checkbox-item"><input type="checkbox" name="devices" value="iPhone" /> iPhone</label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Platforms and tools</label>
+                <div class="checkbox-group" id="platforms-group">
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Google Workspace" /> Google Workspace</label>
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Microsoft 365" /> Microsoft 365</label>
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Apple Education" /> Apple Education</label>
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Google Classroom" /> Google Classroom</label>
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Canvas" /> Canvas</label>
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Seesaw" /> Seesaw</label>
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Schoology" /> Schoology</label>
+                  <label class="checkbox-item"><input type="checkbox" name="platforms" value="Clever" /> Clever</label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Accommodation flags</label>
+                <div class="checkbox-group" id="accommodations-group">
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Extended time" /> Extended time</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Text-to-speech support" /> Text-to-speech</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Speech-to-text support" /> Speech-to-text</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Graphic organizers" /> Graphic organizers</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Preferential seating" /> Preferential seating</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Small group instruction" /> Small group instruction</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="One-on-one support" /> One-on-one support</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Visual schedules and supports" /> Visual schedules/supports</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="AAC / communication support" /> AAC / communication support</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="ELL / multilingual support" /> ELL / multilingual support</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Reduced assignment length" /> Reduced assignment length</label>
+                  <label class="checkbox-item"><input type="checkbox" name="accommodations" value="Chunked tasks / step-by-step directions" /> Chunked tasks</label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="cl-support-notes">Student support details <span style="font-weight:400; color:var(--ink-muted);">(optional)</span></label>
+                <textarea id="cl-support-notes" rows="4" placeholder="Specific accommodation notes, individual needs, anything the checkboxes don't capture…"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="cl-context-notes">Instructional context <span style="font-weight:400; color:var(--ink-muted);">(optional)</span></label>
+                <textarea id="cl-context-notes" rows="4" placeholder="Outcome patterns, what students are currently working on, where they're struggling, what's been working…"></textarea>
+              </div>
+
+              <div class="save-bar">
+                <span class="save-bar__status" id="class-status"></span>
+                <button type="submit" class="btn btn--primary" id="class-save">Save classroom</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Resources panel -->
+          <div class="panel">
+            <h2>Classroom resources</h2>
+
+            <div class="inline-alert inline-alert--ok"  id="res-ok"></div>
+            <div class="inline-alert inline-alert--err" id="res-err"></div>
+
+            <h3 style="font-family: var(--font-display); color: var(--ink); font-size:.95rem; margin: 1rem 0 .5rem; font-weight:600;">Add a resource</h3>
+            <form id="add-resource-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="res-category">Category</label>
+                  <select id="res-category" required>
+                    <option value="">Select category…</option>
+                    <option>Digital Tools</option>
+                    <option>Assistive Technology</option>
+                    <option>Intervention Materials</option>
+                    <option>Curriculum Resources</option>
+                    <option>Human Supports</option>
+                    <option>Environmental Supports</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="res-name">Resource name</label>
+                  <input type="text" id="res-name" required maxlength="200" placeholder="e.g. Read&amp;Write extension" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="res-notes">Notes (optional)</label>
+                <textarea id="res-notes" rows="2" maxlength="600" placeholder="How it's used, who has access, anything important…"></textarea>
+              </div>
+
+              <button type="submit" class="btn btn--primary" id="add-resource-btn">Add resource</button>
+            </form>
+
+            <h3 style="font-family: var(--font-display); color: var(--ink); font-size:.95rem; margin: 1.6rem 0 .5rem; font-weight:600;">Current resources</h3>
+            <div id="resource-list"></div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+  const sb = window.sb;
+
+  /* ─────────────────────────────────────────
+     State
+  ───────────────────────────────────────── */
+  let currentUser    = null;
+  let currentProfile = null;
+  let myClassrooms = [];         // [{ id, teacher_name, school_name, grade_level, subject }]
+  let currentClassroomId = null;
+  let currentClassroomData = null; // full classroom row
+  let currentNotes = [];           // [{ id, note_category, note_text }]
+  let currentResources = [];       // [{ id, category, name, notes }]
+  let classDirty = false;
+
+  /* ─────────────────────────────────────────
+     DOM refs
+  ───────────────────────────────────────── */
+  const switcherBar  = document.getElementById('switcher-bar');
+  const switcherEl   = document.getElementById('switcher');
+  const editorEl     = document.getElementById('editor');
+  const emptyEl      = document.getElementById('empty-state');
+  const classForm    = document.getElementById('classroom-form');
+  const classOk      = document.getElementById('class-ok');
+  const classErr     = document.getElementById('class-err');
+  const classStatus  = document.getElementById('class-status');
+  const resOk        = document.getElementById('res-ok');
+  const resErr       = document.getElementById('res-err');
+  const resListEl    = document.getElementById('resource-list');
+  const addResForm   = document.getElementById('add-resource-form');
+
+  /* ─────────────────────────────────────────
+     Helpers
+  ───────────────────────────────────────── */
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+  function setClassStatus(text, level) {
+    classStatus.textContent = text || '';
+    classStatus.className = 'save-bar__status' + (level ? ' ' + level : '');
+  }
+  function showInline(box, msg, type) {
+    box.textContent = msg;
+    box.className = 'inline-alert inline-alert--' + (type === 'ok' ? 'ok' : 'err');
+    box.classList.add('show');
+    setTimeout(() => box.classList.remove('show'), 4000);
+  }
+
+  /* Set checkbox state for a given group from a string[] value */
+  function setChecked(name, values) {
+    const set = new Set((values || []).map(String));
+    document.querySelectorAll(`input[type="checkbox"][name="${name}"]`)
+      .forEach(cb => { cb.checked = set.has(cb.value); });
+  }
+  function getChecked(name) {
+    return Array.from(document.querySelectorAll(`input[type="checkbox"][name="${name}"]:checked`))
+      .map(cb => cb.value);
+  }
+
+  /* ─────────────────────────────────────────
+     Load: the teacher's classroom list
+  ───────────────────────────────────────── */
+  async function loadMyClassrooms() {
+    // RLS restricts this to classrooms the teacher is linked to via classroom_teachers
+    const { data, error } = await sb
+      .from('classrooms')
+      .select('id, teacher_name, school_name, grade_level, subject')
+      .order('teacher_name');
+
+    if (error) {
+      editorEl.style.display = 'none';
+      emptyEl.style.display = 'block';
+      emptyEl.querySelector('h2').textContent = 'Could not load your classrooms.';
+      console.error(error);
+      return;
+    }
+
+    myClassrooms = data || [];
+
+    if (myClassrooms.length === 0) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    // Populate switcher (always populated; visible only if >1)
+    switcherEl.innerHTML = myClassrooms.map(c =>
+      `<option value="${c.id}">${escapeHtml(c.teacher_name)} — ${escapeHtml(c.grade_level || '')} ${escapeHtml(c.subject || '')}</option>`
+    ).join('');
+
+    switcherBar.style.display = myClassrooms.length > 1 ? 'flex' : 'none';
+
+    // Pick from ?id= if present, else first
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get('id');
+    const initialId = requested && myClassrooms.some(c => c.id === requested) ? requested : myClassrooms[0].id;
+    switcherEl.value = initialId;
+    await loadClassroom(initialId);
+    editorEl.style.display = 'block';
+  }
+
+  /* ─────────────────────────────────────────
+     Load: one classroom + notes + resources
+  ───────────────────────────────────────── */
+  async function loadClassroom(id) {
+    currentClassroomId = id;
+    classDirty = false;
+    setClassStatus('');
+
+    const [classRes, notesRes, resRes] = await Promise.all([
+      sb.from('classrooms').select('*').eq('id', id).single(),
+      sb.from('classroom_notes').select('id, note_category, note_text').eq('classroom_id', id),
+      sb.from('classroom_resources').select('id, category, name, notes').eq('classroom_id', id).order('category').order('name'),
+    ]);
+
+    if (classRes.error || !classRes.data) {
+      showInline(classErr, 'Could not load the classroom: ' + (classRes.error?.message || 'unknown'), 'err');
+      return;
+    }
+
+    currentClassroomData = classRes.data;
+    currentNotes         = notesRes.data || [];
+    currentResources     = resRes.data   || [];
+
+    // Populate classroom form fields
+    document.getElementById('cl-teacher').value   = currentClassroomData.teacher_name || '';
+    document.getElementById('cl-school').value    = currentClassroomData.school_name  || '';
+    document.getElementById('cl-grade').value     = currentClassroomData.grade_level  || '';
+    document.getElementById('cl-subject').value   = currentClassroomData.subject      || '';
+    document.getElementById('cl-ecosystem').value = currentClassroomData.primary_ecosystem || '';
+
+    setChecked('devices',        currentClassroomData.available_devices);
+    setChecked('platforms',      currentClassroomData.available_platforms);
+    setChecked('accommodations', currentClassroomData.accommodation_flags);
+
+    const supportNote = currentNotes.find(n => n.note_category === 'Student Support Details');
+    const contextNote = currentNotes.find(n => n.note_category === 'Instructional Context');
+    document.getElementById('cl-support-notes').value = supportNote?.note_text || '';
+    document.getElementById('cl-context-notes').value = contextNote?.note_text || '';
+
+    renderResourceList();
+  }
+
+  /* ─────────────────────────────────────────
+     Render: resource list (grouped by category, with edit/delete)
+  ───────────────────────────────────────── */
+  function renderResourceList() {
+    if (currentResources.length === 0) {
+      resListEl.innerHTML = '<p class="empty-msg">No resources yet. Add the first one above.</p>';
+      return;
+    }
+
+    const grouped = {};
+    currentResources.forEach(r => {
+      const cat = r.category || 'Other';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(r);
+    });
+
+    resListEl.innerHTML = Object.keys(grouped).sort().map(cat => `
+      <div class="resource-category">
+        <h3>${escapeHtml(cat)} (${grouped[cat].length})</h3>
+        ${grouped[cat].map(item => `
+          <div class="resource-row" data-id="${item.id}">
+            <div class="resource-row__body">
+              <p class="resource-row__name">${escapeHtml(item.name)}</p>
+              ${item.notes ? `<p class="resource-row__notes">${escapeHtml(item.notes)}</p>` : ''}
+            </div>
+            <div class="resource-row__actions">
+              <button class="resource-row__btn resource-row__btn--edit"   data-edit="${item.id}">Edit</button>
+              <button class="resource-row__btn resource-row__btn--delete" data-del="${item.id}" data-name="${escapeHtml(item.name)}">Delete</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+
+    // Wire delete
+    resListEl.querySelectorAll('[data-del]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-del');
+        const name = btn.getAttribute('data-name') || 'this resource';
+        if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+        const { error } = await sb.from('classroom_resources').delete().eq('id', id);
+        if (error) { showInline(resErr, 'Delete failed: ' + error.message, 'err'); return; }
+        currentResources = currentResources.filter(r => r.id !== id);
+        renderResourceList();
+      });
+    });
+
+    // Wire edit
+    resListEl.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => enterEditMode(btn.getAttribute('data-edit')));
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     Resource edit-in-place
+  ───────────────────────────────────────── */
+  function enterEditMode(id) {
+    const item = currentResources.find(r => r.id === id);
+    if (!item) return;
+    const row = resListEl.querySelector(`.resource-row[data-id="${id}"]`);
+    if (!row) return;
+
+    const categories = [
+      'Digital Tools','Assistive Technology','Intervention Materials',
+      'Curriculum Resources','Human Supports','Environmental Supports'
+    ];
+    const opts = categories.map(c =>
+      `<option ${c === item.category ? 'selected' : ''}>${c}</option>`
+    ).join('');
+
+    row.outerHTML = `
+      <div class="resource-edit-form" data-id="${id}">
+        <div class="form-row-3">
+          <div>
+            <label>Category</label>
+            <select data-field="category">${opts}</select>
+          </div>
+          <div>
+            <label>Name</label>
+            <input type="text" data-field="name" value="${escapeHtml(item.name)}" />
+          </div>
+          <div>
+            <label>Notes (optional)</label>
+            <input type="text" data-field="notes" value="${escapeHtml(item.notes || '')}" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--ghost" data-action="cancel">Cancel</button>
+          <button class="btn btn--primary" data-action="save">Save</button>
+        </div>
+      </div>
+    `;
+
+    const wrap = resListEl.querySelector(`.resource-edit-form[data-id="${id}"]`);
+    wrap.querySelector('[data-action="cancel"]').addEventListener('click', renderResourceList);
+    wrap.querySelector('[data-action="save"]').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const updated = {
+        category: wrap.querySelector('[data-field="category"]').value,
+        name:     wrap.querySelector('[data-field="name"]').value.trim(),
+        notes:    wrap.querySelector('[data-field="notes"]').value.trim() || null,
+      };
+      if (!updated.name) { wrap.querySelector('[data-field="name"]').focus(); return; }
+
+      const saveBtn = wrap.querySelector('[data-action="save"]');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+
+      const { error } = await sb.from('classroom_resources').update(updated).eq('id', id);
+      if (error) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+        showInline(resErr, 'Update failed: ' + error.message, 'err');
+        return;
+      }
+      const i = currentResources.findIndex(r => r.id === id);
+      if (i !== -1) currentResources[i] = { ...currentResources[i], ...updated };
+      renderResourceList();
+      showInline(resOk, 'Resource updated.', 'ok');
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     Save: classroom + notes (single submit)
+  ───────────────────────────────────────── */
+  classForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentClassroomId) return;
+    classOk.classList.remove('show');
+    classErr.classList.remove('show');
+
+    const teacher   = document.getElementById('cl-teacher').value.trim();
+    const school    = document.getElementById('cl-school').value.trim();
+    const grade     = document.getElementById('cl-grade').value;
+    const subject   = document.getElementById('cl-subject').value.trim();
+    const ecosystem = document.getElementById('cl-ecosystem').value;
+
+    if (!teacher || !school || !grade || !subject || !ecosystem) {
+      showInline(classErr, 'Please fill in every required field.', 'err');
+      return;
+    }
+
+    const devices        = getChecked('devices');
+    const platforms      = getChecked('platforms');
+    const accommodations = getChecked('accommodations');
+    const supportNotes   = document.getElementById('cl-support-notes').value.trim();
+    const contextNotes   = document.getElementById('cl-context-notes').value.trim();
+
+    setClassStatus('Saving…', 'dirty');
+    const saveBtn = document.getElementById('class-save');
+    saveBtn.disabled = true;
+
+    const { error: classUpdErr } = await sb.from('classrooms').update({
+      teacher_name:         teacher,
+      school_name:          school,
+      grade_level:          grade,
+      subject,
+      primary_ecosystem:    ecosystem,
+      available_devices:    devices,
+      available_platforms:  platforms,
+      accommodation_flags:  accommodations,
+    }).eq('id', currentClassroomId);
+
+    if (classUpdErr) {
+      saveBtn.disabled = false;
+      setClassStatus('Save failed: ' + classUpdErr.message, 'error');
+      return;
+    }
+
+    // Notes: upsert by (classroom_id, note_category)
+    const noteCats = [
+      { category: 'Student Support Details', text: supportNotes },
+      { category: 'Instructional Context',   text: contextNotes },
+    ];
+
+    for (const n of noteCats) {
+      const existing = currentNotes.find(x => x.note_category === n.category);
+      if (existing && n.text) {
+        await sb.from('classroom_notes').update({ note_text: n.text }).eq('id', existing.id);
+      } else if (existing && !n.text) {
+        await sb.from('classroom_notes').delete().eq('id', existing.id);
+      } else if (!existing && n.text) {
+        await sb.from('classroom_notes').insert({
+          classroom_id:  currentClassroomId,
+          note_category: n.category,
+          note_text:     n.text,
+        });
+      }
+    }
+
+    saveBtn.disabled = false;
+    classDirty = false;
+    setClassStatus('Saved', 'saved');
+    setTimeout(() => { if (!classDirty) setClassStatus(''); }, 2500);
+
+    // Refresh notes cache + switcher labels (in case name/grade/subject changed)
+    const [notesRes, listRes] = await Promise.all([
+      sb.from('classroom_notes').select('id, note_category, note_text').eq('classroom_id', currentClassroomId),
+      sb.from('classrooms').select('id, teacher_name, school_name, grade_level, subject').order('teacher_name'),
+    ]);
+    currentNotes = notesRes.data || [];
+    myClassrooms = listRes.data || myClassrooms;
+    if (myClassrooms.length) {
+      switcherEl.innerHTML = myClassrooms.map(c =>
+        `<option ${c.id === currentClassroomId ? 'selected' : ''} value="${c.id}">${escapeHtml(c.teacher_name)} — ${escapeHtml(c.grade_level || '')} ${escapeHtml(c.subject || '')}</option>`
+      ).join('');
+    }
+  });
+
+  /* Dirty tracking on any classroom-form change */
+  classForm.addEventListener('input', () => {
+    classDirty = true;
+    setClassStatus('Unsaved changes', 'dirty');
+  });
+
+  /* ─────────────────────────────────────────
+     Add resource
+  ───────────────────────────────────────── */
+  addResForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentClassroomId) return;
+    resOk.classList.remove('show');
+    resErr.classList.remove('show');
+
+    const category = document.getElementById('res-category').value;
+    const name     = document.getElementById('res-name').value.trim();
+    const notes    = document.getElementById('res-notes').value.trim();
+
+    if (!category || !name) return;
+
+    const btn = document.getElementById('add-resource-btn');
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+
+    const { data, error } = await sb.from('classroom_resources').insert({
+      classroom_id: currentClassroomId,
+      category,
+      name,
+      notes: notes || null,
+    }).select().single();
+
+    btn.disabled = false;
+    btn.textContent = 'Add resource';
+
+    if (error) {
+      showInline(resErr, 'Could not add: ' + error.message, 'err');
+      return;
+    }
+
+    currentResources.push(data);
+    addResForm.reset();
+    renderResourceList();
+    showInline(resOk, `Added “${name}” under ${category}.`, 'ok');
+  });
+
+  /* ─────────────────────────────────────────
+     Switcher
+  ───────────────────────────────────────── */
+  switcherEl.addEventListener('change', async () => {
+    if (classDirty && !confirm('You have unsaved classroom changes. Discard them and switch?')) {
+      switcherEl.value = currentClassroomId;
+      return;
+    }
+    await loadClassroom(switcherEl.value);
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (classDirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  /* ─────────────────────────────────────────
+     Init — teachers only
+  ───────────────────────────────────────── */
+  (async () => {
+    const session = await window.Auth.requireSession({ allowedRoles: ['teacher'] });
+    currentUser    = session.user;
+    currentProfile = session.profile;
+    window.Auth.renderUserChip();
+
+    await loadMyClassrooms();
+  })();
+  </script>
+
+</body>
+</html>

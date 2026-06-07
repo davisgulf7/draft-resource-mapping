@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teachers — Coordinated Learning Systems</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+
+  <style>
+    .teacher-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 1rem;
+    }
+    .teacher-card {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1.1rem 1.15rem 1.2rem;
+      border-top: 4px solid var(--usf-green);
+      display: flex;
+      flex-direction: column;
+      gap: .65rem;
+    }
+    .teacher-card__head {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+    }
+    .teacher-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--usf-green);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      flex: 0 0 38px;
+    }
+    .teacher-card__meta {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .teacher-card__name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--usf-green);
+      margin: 0;
+    }
+    .teacher-card__email {
+      font-size: .78rem;
+      color: var(--ink-muted);
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 1.6rem; }
+    .classroom-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      background: var(--bg-alt);
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      padding: .2rem .55rem;
+      font-size: .75rem;
+      color: var(--ink);
+      max-width: 100%;
+    }
+    .classroom-chip__label {
+      max-width: 14rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .classroom-chip__remove {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--ink-muted);
+      padding: 0;
+      width: 16px;
+      height: 16px;
+      line-height: 1;
+      font-size: .85rem;
+      border-radius: 50%;
+    }
+    .classroom-chip__remove:hover {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+    .no-classrooms {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      font-style: italic;
+    }
+
+    .add-link {
+      display: flex;
+      gap: .4rem;
+      margin-top: .25rem;
+    }
+    .add-link select {
+      flex: 1 1 auto;
+      padding: .4rem .6rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .85rem;
+      background: #fff;
+      min-width: 0;
+    }
+    .add-link button {
+      padding: .4rem .8rem;
+      font-size: .8rem;
+    }
+    .add-link.disabled select { background: var(--bg-alt); color: var(--ink-muted); }
+
+    .empty-state {
+      padding: 2.5rem 1rem;
+      text-align: center;
+      color: var(--ink-muted);
+    }
+    .empty-state h3 {
+      font-family: var(--font-display);
+      color: var(--usf-green);
+      margin: 0 0 .35rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="topbar__brand" href="admin-dashboard.html">
+        <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+        <div class="topbar__names">
+          <span class="topbar__org">Coordinated Learning Systems</span>
+          <span class="topbar__sub">University of South Florida</span>
+        </div>
+      </a>
+      <nav class="topbar__nav" aria-label="Main navigation">
+        <a href="admin-dashboard.html" data-admin-only>Admin Dashboard</a>
+        <a href="admin-teachers.html"  class="active" data-admin-only>Teachers</a>
+        <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="my-classroom.html" data-teacher-only>My Classroom</a>
+        <a href="school-resources.html">School Resources</a>
+        <a href="lesson-planner.html">Lesson Planner</a>
+        <a href="my-lessons.html" data-teacher-only>My Lessons</a>
+      </nav>
+      <div class="topbar__user" aria-label="Account"></div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="page-hero">
+    <div class="container">
+      <span class="page-hero__eyebrow">Admin</span>
+      <h1>Teachers</h1>
+      <p>Every teacher account in the school and the classrooms they're associated with. Link or unlink teachers as needed.</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="section">
+      <div class="container">
+        <div id="teachers-area"><!-- populated by JS --></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  const sb = window.sb;
+
+  /* ─────────────────────────────────────────
+     State
+  ───────────────────────────────────────── */
+  let teachers   = [];         // [{ id, display_name, email }]
+  let allClassrooms = [];      // [{ id, teacher_name, grade_level, subject, school_name }]
+  let links      = [];         // [{ teacher_id, classroom_id }]
+
+  const areaEl = document.getElementById('teachers-area');
+
+  /* ─────────────────────────────────────────
+     Helpers
+  ───────────────────────────────────────── */
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+  function initialFor(s) {
+    return (String(s || '?').trim().charAt(0) || '?').toUpperCase();
+  }
+  function classroomLabel(c) {
+    return `${c.teacher_name || '—'} · ${c.grade_level || ''} ${c.subject || ''}`.trim();
+  }
+
+  /* ─────────────────────────────────────────
+     Load: teachers + classrooms + links
+  ───────────────────────────────────────── */
+  async function loadAll() {
+    const [tRes, cRes, lRes] = await Promise.all([
+      sb.from('profiles').select('id, display_name, email').eq('role', 'teacher').order('display_name'),
+      sb.from('classrooms').select('id, teacher_name, grade_level, subject, school_name').order('teacher_name'),
+      sb.from('classroom_teachers').select('teacher_id, classroom_id'),
+    ]);
+
+    if (tRes.error) {
+      areaEl.innerHTML = `<p style="color:#b91c1c;">Could not load teachers: ${escapeHtml(tRes.error.message)}</p>`;
+      return;
+    }
+    teachers      = tRes.data || [];
+    allClassrooms = cRes.data || [];
+    links         = lRes.data || [];
+
+    render();
+  }
+
+  /* ─────────────────────────────────────────
+     Render
+  ───────────────────────────────────────── */
+  function render() {
+    if (teachers.length === 0) {
+      areaEl.innerHTML = `
+        <div class="empty-state">
+          <h3>No teacher accounts yet.</h3>
+          <p>When a teacher signs up they'll appear here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Index classrooms by id for O(1) lookup
+    const classroomById = Object.fromEntries(allClassrooms.map(c => [c.id, c]));
+
+    const cards = teachers.map(t => {
+      const linkedIds = links.filter(l => l.teacher_id === t.id).map(l => l.classroom_id);
+      const linkedClassrooms = linkedIds.map(id => classroomById[id]).filter(Boolean);
+      const unlinkedClassrooms = allClassrooms.filter(c => !linkedIds.includes(c.id));
+
+      const chipsHtml = linkedClassrooms.length === 0
+        ? `<span class="no-classrooms">Not linked to any classroom yet.</span>`
+        : linkedClassrooms.map(c => `
+            <span class="classroom-chip" title="${escapeHtml(classroomLabel(c))}">
+              <span class="classroom-chip__label">${escapeHtml(classroomLabel(c))}</span>
+              <button class="classroom-chip__remove"
+                      data-remove
+                      data-teacher="${t.id}"
+                      data-classroom="${c.id}"
+                      aria-label="Remove ${escapeHtml(classroomLabel(c))}">×</button>
+            </span>
+          `).join('');
+
+      const addHtml = unlinkedClassrooms.length === 0
+        ? `<div class="add-link disabled"><select disabled><option>No more classrooms to link</option></select></div>`
+        : `<div class="add-link">
+             <select data-add-select="${t.id}">
+               <option value="">— Link to a classroom —</option>
+               ${unlinkedClassrooms.map(c =>
+                 `<option value="${c.id}">${escapeHtml(classroomLabel(c))}</option>`
+               ).join('')}
+             </select>
+             <button class="btn btn--primary" data-add-btn="${t.id}">Link</button>
+           </div>`;
+
+      return `
+        <div class="teacher-card">
+          <div class="teacher-card__head">
+            <span class="teacher-avatar" aria-hidden="true">${escapeHtml(initialFor(t.display_name || t.email))}</span>
+            <div class="teacher-card__meta">
+              <p class="teacher-card__name">${escapeHtml(t.display_name || '(no name)')}</p>
+              <p class="teacher-card__email">${escapeHtml(t.email || '')}</p>
+            </div>
+          </div>
+          <div class="chip-row">${chipsHtml}</div>
+          ${addHtml}
+        </div>
+      `;
+    }).join('');
+
+    areaEl.innerHTML = `<div class="teacher-grid">${cards}</div>`;
+
+    /* Remove a link */
+    areaEl.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const teacher_id   = btn.getAttribute('data-teacher');
+        const classroom_id = btn.getAttribute('data-classroom');
+        const { error } = await sb.from('classroom_teachers')
+          .delete()
+          .eq('teacher_id', teacher_id)
+          .eq('classroom_id', classroom_id);
+        if (error) { alert('Could not remove: ' + error.message); return; }
+        links = links.filter(l => !(l.teacher_id === teacher_id && l.classroom_id === classroom_id));
+        render();
+      });
+    });
+
+    /* Add a link */
+    areaEl.querySelectorAll('[data-add-btn]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const teacher_id = btn.getAttribute('data-add-btn');
+        const select     = areaEl.querySelector(`[data-add-select="${teacher_id}"]`);
+        const classroom_id = select.value;
+        if (!classroom_id) return;
+        btn.disabled = true;
+        const { error } = await sb.from('classroom_teachers').insert({ teacher_id, classroom_id });
+        btn.disabled = false;
+        if (error) { alert('Could not link: ' + error.message); return; }
+        links.push({ teacher_id, classroom_id });
+        render();
+      });
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     Init — admin only
+  ───────────────────────────────────────── */
+  (async () => {
+    await window.Auth.requireSession({ allowedRoles: ['admin'] });
+    window.Auth.renderUserChip();
+    await loadAll();
+  })();
+  </script>
+
+</body>
+</html>

@@ -77,7 +77,12 @@
       margin: 0;
       word-break: break-word;
     }
-    .resource-item__delete {
+    .resource-item__actions {
+      display: flex;
+      gap: .25rem;
+      align-self: center;
+    }
+    .resource-item__btn {
       background: transparent;
       border: none;
       color: var(--ink-muted);
@@ -85,12 +90,48 @@
       font-size: .75rem;
       padding: .25rem .5rem;
       border-radius: var(--radius);
-      align-self: center;
     }
-    .resource-item__delete:hover {
-      background: #fef2f2;
-      color: #b91c1c;
+    .resource-item__btn--edit:hover   { background: var(--bg-alt); color: var(--usf-green); }
+    .resource-item__btn--delete:hover { background: #fef2f2;       color: #b91c1c; }
+
+    /* Inline edit form (swaps into the row on Edit) */
+    .resource-edit-form {
+      background: var(--bg-alt);
+      padding: .75rem .85rem;
+      border-radius: var(--radius);
+      margin: .35rem 0;
     }
+    .resource-edit-form .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1.5fr;
+      gap: .5rem;
+    }
+    .resource-edit-form label {
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin: 0 0 .15rem;
+      display: block;
+    }
+    .resource-edit-form select,
+    .resource-edit-form input {
+      width: 100%;
+      padding: .4rem .55rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .85rem;
+      background: #fff;
+    }
+    .resource-edit-form .form-actions {
+      display: flex;
+      gap: .4rem;
+      justify-content: flex-end;
+      margin-top: .55rem;
+    }
+    .resource-edit-form .btn { padding: .35rem .8rem; font-size: .8rem; }
 
     .empty-list {
       color: var(--ink-muted);
@@ -145,7 +186,9 @@
       </a>
       <nav class="topbar__nav" aria-label="Main navigation">
         <a href="admin-dashboard.html" data-admin-only>Admin Dashboard</a>
+        <a href="admin-teachers.html"  data-admin-only>Teachers</a>
         <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="my-classroom.html" data-teacher-only>My Classroom</a>
         <a href="school-resources.html" class="active">School Resources</a>
         <a href="lesson-planner.html">Lesson Planner</a>
         <a href="my-lessons.html" data-teacher-only>My Lessons</a>
@@ -234,6 +277,12 @@
   <script>
   const sb = window.sb;
   let currentRole = null;
+  let currentResources = [];
+  const SCHOOL_CATEGORIES = [
+    'Digital Tools','Assistive Technology','Intervention Materials',
+    'Curriculum Resources','Human Supports','Environmental Supports',
+    'Library','Makerspace','Other'
+  ];
 
   /* ─────────────────────────────────────────
      Helpers
@@ -259,7 +308,7 @@
     return ordered;
   }
 
-  function renderList(rows, target, canDelete) {
+  function renderList(rows, target, canEdit) {
     if (!rows || rows.length === 0) {
       target.innerHTML = `
         <div class="empty-state">
@@ -277,23 +326,28 @@
       <div class="category-block">
         <h3>${escapeHtml(cat)} (${items.length})</h3>
         ${items.map(item => `
-          <div class="resource-item">
+          <div class="resource-item" data-row="${item.id}">
             <div class="resource-item__body">
               <p class="resource-item__name">${escapeHtml(item.name)}</p>
               ${item.notes ? `<p class="resource-item__notes">${escapeHtml(item.notes)}</p>` : ''}
             </div>
-            ${canDelete ? `
-              <button class="resource-item__delete"
-                      data-delete="${item.id}"
-                      data-name="${escapeHtml(item.name)}"
-                      title="Delete resource">Delete</button>
+            ${canEdit ? `
+              <div class="resource-item__actions">
+                <button class="resource-item__btn resource-item__btn--edit"
+                        data-edit="${item.id}"
+                        title="Edit resource">Edit</button>
+                <button class="resource-item__btn resource-item__btn--delete"
+                        data-delete="${item.id}"
+                        data-name="${escapeHtml(item.name)}"
+                        title="Delete resource">Delete</button>
+              </div>
             ` : ''}
           </div>
         `).join('')}
       </div>
     `).join('');
 
-    if (canDelete) {
+    if (canEdit) {
       target.querySelectorAll('[data-delete]').forEach(btn => {
         btn.addEventListener('click', async () => {
           const id   = btn.getAttribute('data-delete');
@@ -304,7 +358,70 @@
           await loadResources();
         });
       });
+      target.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => enterEditMode(btn.getAttribute('data-edit'), target));
+      });
     }
+  }
+
+  /* Inline edit: swap the row for a small form */
+  function enterEditMode(id, target) {
+    const item = currentResources.find(r => r.id === id);
+    if (!item) return;
+    const row = target.querySelector(`.resource-item[data-row="${id}"]`);
+    if (!row) return;
+
+    const catOpts = SCHOOL_CATEGORIES.map(c =>
+      `<option ${c === item.category ? 'selected' : ''}>${c}</option>`
+    ).join('');
+
+    row.outerHTML = `
+      <div class="resource-edit-form" data-row="${id}">
+        <div class="form-row-3">
+          <div>
+            <label>Category</label>
+            <select data-field="category">${catOpts}</select>
+          </div>
+          <div>
+            <label>Name</label>
+            <input type="text" data-field="name" value="${escapeHtml(item.name)}" />
+          </div>
+          <div>
+            <label>Notes (optional)</label>
+            <input type="text" data-field="notes" value="${escapeHtml(item.notes || '')}" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--ghost"   data-action="cancel">Cancel</button>
+          <button class="btn btn--primary" data-action="save">Save</button>
+        </div>
+      </div>
+    `;
+
+    const wrap = target.querySelector(`.resource-edit-form[data-row="${id}"]`);
+    wrap.querySelector('[data-action="cancel"]').addEventListener('click', () => loadResources());
+    wrap.querySelector('[data-action="save"]').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const updated = {
+        category: wrap.querySelector('[data-field="category"]').value,
+        name:     wrap.querySelector('[data-field="name"]').value.trim(),
+        notes:    wrap.querySelector('[data-field="notes"]').value.trim() || null,
+      };
+      if (!updated.name) { wrap.querySelector('[data-field="name"]').focus(); return; }
+
+      const saveBtn = wrap.querySelector('[data-action="save"]');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+
+      const { error } = await sb.from('school_resources').update(updated).eq('id', id);
+      if (error) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+        alert('Update failed: ' + error.message);
+        return;
+      }
+      await loadResources();
+    });
   }
 
   /* ─────────────────────────────────────────
@@ -322,10 +439,12 @@
       return;
     }
 
+    currentResources = data || [];
+
     if (currentRole === 'admin') {
-      renderList(data, document.getElementById('resource-list-admin'),   true);
+      renderList(currentResources, document.getElementById('resource-list-admin'),   true);
     } else {
-      renderList(data, document.getElementById('resource-list-teacher'), false);
+      renderList(currentResources, document.getElementById('resource-list-teacher'), false);
     }
   }
 
