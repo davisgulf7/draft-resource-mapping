@@ -593,6 +593,118 @@
       transform: translateX(-50%) translateY(0);
     }
 
+    /* ── Save Lesson Plan: inline actions on assistant bubbles ── */
+    .msg-actions {
+      display: flex;
+      gap: .5rem;
+      margin-top: .65rem;
+      padding-top: .55rem;
+      border-top: 1px dashed var(--color-border);
+    }
+    .msg-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      font-family: var(--font-body);
+      font-size: .78rem;
+      font-weight: 600;
+      padding: .3rem .65rem;
+      border: 1px solid var(--color-border);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--color-green);
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .msg-action-btn:hover {
+      background: var(--color-sand);
+      border-color: var(--color-green);
+    }
+    .msg-action-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+    .msg-action-btn.saved {
+      color: var(--ink-muted);
+      cursor: default;
+      pointer-events: none;
+    }
+
+    /* ── Save modal ── */
+    .save-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+    }
+    .save-overlay.show { display: flex; }
+    .save-modal {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 36px rgba(0,0,0,.25);
+      width: 100%;
+      max-width: 460px;
+      padding: 1.5rem 1.4rem 1.4rem;
+      border-top: 5px solid var(--color-green);
+    }
+    .save-modal h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--color-green);
+      margin: 0 0 .35rem;
+    }
+    .save-modal p {
+      color: var(--ink-muted);
+      font-size: .85rem;
+      margin: 0 0 1rem;
+    }
+    .save-modal .form-group { margin-bottom: 1rem; }
+    .save-modal label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--color-text-secondary);
+      margin-bottom: .25rem;
+    }
+    .save-modal input,
+    .save-modal textarea {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .9rem;
+    }
+    .save-modal input:focus,
+    .save-modal textarea:focus {
+      outline: none;
+      border-color: var(--color-green);
+      box-shadow: 0 0 0 3px rgba(0,103,71,.1);
+    }
+    .save-modal textarea { resize: vertical; min-height: 60px; }
+    .save-modal .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem;
+    }
+    .save-modal .actions {
+      display: flex;
+      gap: .5rem;
+      justify-content: flex-end;
+      margin-top: 1.1rem;
+    }
+    .save-modal .actions button {
+      padding: .55rem 1rem;
+      font-size: .85rem;
+    }
+
     /* ── Responsive touch-ups ── */
     @media (max-width: 768px) {
       .context-pane { width: 260px; flex: 0 0 260px; }
@@ -616,6 +728,7 @@
     <nav class="topbar__nav" aria-label="Main navigation">
       <a href="resource-mapping.html">Resource Mapping</a>
       <a href="lesson-planner.html" class="active">Lesson Planner</a>
+      <a href="my-lessons.html" data-teacher-only>My Lessons</a>
     </nav>
     <div class="topbar__user" aria-label="Account"></div>
   </div>
@@ -710,6 +823,35 @@
 
 <!-- Error toast -->
 <div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<!-- Save Lesson Plan modal -->
+<div class="save-overlay" id="save-overlay" role="dialog" aria-modal="true" aria-labelledby="save-title">
+  <div class="save-modal">
+    <h3 id="save-title">Save lesson plan</h3>
+    <p>This will save the current plan to your library. You can edit it after.</p>
+
+    <div class="form-group">
+      <label for="save-input-title">Title</label>
+      <input type="text" id="save-input-title" placeholder="Give it a name…" maxlength="200" />
+    </div>
+
+    <div class="form-row-2">
+      <div class="form-group">
+        <label for="save-input-topic">Topic</label>
+        <input type="text" id="save-input-topic" placeholder="(optional)" />
+      </div>
+      <div class="form-group">
+        <label for="save-input-timeframe">Time frame</label>
+        <input type="text" id="save-input-timeframe" placeholder="e.g. 2 class periods" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn--ghost" id="save-cancel">Cancel</button>
+      <button type="button" class="btn btn--primary" id="save-confirm">Save plan</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════
      SCRIPTS
@@ -1257,6 +1399,11 @@ async function sendToAI(userText, isGreeting) {
     conversationHistory.push({ role: 'assistant', content: fullText });
     setStatus('ready');
 
+    // Offer "Save lesson plan" on substantive responses
+    if (streamingBubble && fullText.length >= 400 && currentRole === 'teacher') {
+      attachSaveButton(streamingBubble, fullText);
+    }
+
   } catch (err) {
     showTyping(false);
     setStatus('ready');
@@ -1291,6 +1438,134 @@ function createAssistantBubble() {
   scrollToBottom();
   return bubble;
 }
+
+/* ─────────────────────────────────────────
+   Save Lesson Plan — attach button + modal flow
+───────────────────────────────────────── */
+const saveOverlay  = document.getElementById('save-overlay');
+const saveTitleEl  = document.getElementById('save-input-title');
+const saveTopicEl  = document.getElementById('save-input-topic');
+const saveTimeEl   = document.getElementById('save-input-timeframe');
+const saveCancelEl = document.getElementById('save-cancel');
+const saveConfirmEl= document.getElementById('save-confirm');
+
+let pendingPlanContent = null; // markdown of the assistant message being saved
+let pendingSaveButton  = null; // the in-bubble button that opened the modal
+
+function attachSaveButton(bubble, markdown) {
+  // Prevent double-attachment if streaming finishes more than once
+  if (bubble.querySelector('.msg-actions')) return;
+
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'msg-action-btn';
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 4h11l3 3v13H5z"/><path d="M16 4v6H8V4"/><path d="M8 14h8"/>
+    </svg>
+    <span>Save lesson plan</span>
+  `;
+  btn.addEventListener('click', () => openSaveModal(markdown, btn));
+
+  actions.appendChild(btn);
+  bubble.appendChild(actions);
+}
+
+function extractTitle(markdown) {
+  if (!markdown) return '';
+  // 1) "Lesson Title: ..." (case-insensitive, on its own line)
+  let m = markdown.match(/^\s*\**\s*lesson title\s*\**\s*:\s*\**\s*(.+?)\s*\**$/im);
+  if (m && m[1]) return cleanTitle(m[1]);
+  // 2) The first markdown heading (#, ##, ###)
+  m = markdown.match(/^\s*#{1,3}\s+(.+?)\s*$/m);
+  if (m && m[1]) return cleanTitle(m[1]);
+  // 3) Quoted first line as fallback
+  m = markdown.match(/^[\s>*-]*(.{4,120}?)\s*$/m);
+  return m && m[1] ? cleanTitle(m[1]) : '';
+}
+
+function cleanTitle(s) {
+  return s
+    .replace(/\*\*/g, '')
+    .replace(/^["“”'‘’]+|["“”'‘’]+$/g, '')
+    .trim()
+    .slice(0, 200);
+}
+
+function openSaveModal(markdown, originatingBtn) {
+  pendingPlanContent = markdown;
+  pendingSaveButton  = originatingBtn;
+
+  saveTitleEl.value = extractTitle(markdown);
+  saveTopicEl.value = '';
+  saveTimeEl.value  = '';
+
+  saveOverlay.classList.add('show');
+  setTimeout(() => saveTitleEl.focus(), 30);
+}
+
+function closeSaveModal() {
+  saveOverlay.classList.remove('show');
+  pendingPlanContent = null;
+  pendingSaveButton  = null;
+}
+
+saveCancelEl.addEventListener('click', closeSaveModal);
+saveOverlay.addEventListener('click', (e) => {
+  if (e.target === saveOverlay) closeSaveModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && saveOverlay.classList.contains('show')) closeSaveModal();
+});
+
+saveConfirmEl.addEventListener('click', async () => {
+  const title = saveTitleEl.value.trim();
+  if (!title) {
+    saveTitleEl.focus();
+    return;
+  }
+  if (!currentClassroom || !currentUserId || !pendingPlanContent) return;
+
+  saveConfirmEl.disabled = true;
+  saveConfirmEl.textContent = 'Saving…';
+
+  const contentHtml = renderMarkdown(pendingPlanContent);
+
+  const { data, error } = await sb
+    .from('lesson_plans')
+    .insert({
+      classroom_id:    currentClassroom.data.id,
+      teacher_id:      currentUserId,
+      title:           title,
+      content_html:    contentHtml,
+      topic:           saveTopicEl.value.trim() || null,
+      time_frame:      saveTimeEl.value.trim() || null,
+      source_messages: conversationHistory,
+    })
+    .select('id')
+    .single();
+
+  saveConfirmEl.disabled = false;
+  saveConfirmEl.textContent = 'Save plan';
+
+  if (error) {
+    console.error('Save failed:', error);
+    showToast('Could not save: ' + (error.message || 'unknown error'));
+    return;
+  }
+
+  // Mark the originating button as saved so the teacher knows it's done
+  if (pendingSaveButton) {
+    pendingSaveButton.classList.add('saved');
+    pendingSaveButton.querySelector('span').textContent = 'Saved · opening editor…';
+  }
+
+  closeSaveModal();
+  window.location.href = `lesson-editor.html?id=${data.id}`;
+});
 
 /* ─────────────────────────────────────────
    Init — gate the page on auth, then load classrooms

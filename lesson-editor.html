@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson Editor — Coordinated Learning Systems</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+
+  <!-- Quill 2 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+
+  <style>
+    body { background: var(--bg-alt); }
+
+    .editor-shell {
+      max-width: 960px;
+      margin: 1.5rem auto 3rem;
+      padding: 0 var(--gutter);
+    }
+
+    .editor-card {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 24px rgba(0,0,0,.06);
+      padding: 1.5rem 1.5rem 1.75rem;
+      border-top: 5px solid var(--usf-green);
+    }
+
+    .editor-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .editor-head__left {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      font-size: .85rem;
+      color: var(--ink-muted);
+    }
+    .editor-head__left a {
+      color: var(--usf-green);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .editor-head__actions {
+      display: flex;
+      gap: .5rem;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: .75rem;
+      margin-bottom: 1.25rem;
+    }
+    .meta-row .form-group { margin: 0; }
+    .meta-row label {
+      display: block;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      margin-bottom: .25rem;
+    }
+    .meta-row input {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .9rem;
+      background: #fff;
+    }
+    .meta-row input:focus {
+      outline: none;
+      border-color: var(--usf-green);
+      box-shadow: 0 0 0 3px rgba(0,103,71,.1);
+    }
+
+    /* Quill container styling tweaks for the USF look */
+    #quill-editor {
+      min-height: 480px;
+      background: #fff;
+    }
+    .ql-toolbar.ql-snow {
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: var(--bg-alt);
+    }
+    .ql-container.ql-snow {
+      border: 1.5px solid var(--rule);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      line-height: 1.55;
+      min-height: 480px;
+    }
+    .ql-editor h1, .ql-editor h2, .ql-editor h3 {
+      font-family: var(--font-display);
+      color: var(--usf-green);
+    }
+    .ql-editor h1 { font-size: 1.65rem; margin: 1.2em 0 .5em; }
+    .ql-editor h2 { font-size: 1.35rem; margin: 1.2em 0 .5em; }
+    .ql-editor h3 { font-size: 1.1rem; margin: 1em 0 .4em; color: var(--usf-evergreen); }
+    .ql-editor strong { color: inherit; }
+
+    .save-status {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      margin-right: .5rem;
+    }
+    .save-status.saving { color: var(--usf-gold); }
+    .save-status.saved  { color: #047857; }
+    .save-status.error  { color: #b91c1c; }
+
+    .delete-area {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="topbar__brand" href="resource-mapping.html">
+        <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+        <div class="topbar__names">
+          <span class="topbar__org">Coordinated Learning Systems</span>
+          <span class="topbar__sub">University of South Florida</span>
+        </div>
+      </a>
+      <nav class="topbar__nav" aria-label="Main navigation">
+        <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="lesson-planner.html">Lesson Planner</a>
+        <a href="my-lessons.html" class="active" data-teacher-only>My Lessons</a>
+      </nav>
+      <div class="topbar__user" aria-label="Account"></div>
+    </div>
+  </header>
+
+  <main class="editor-shell">
+    <div class="editor-card">
+
+      <div class="editor-head">
+        <div class="editor-head__left">
+          <a href="my-lessons.html">← My Lessons</a>
+          <span id="classroom-tag" class="tag tag--green" style="display:none"></span>
+        </div>
+        <div class="editor-head__actions">
+          <span class="save-status" id="save-status"></span>
+          <button class="btn btn--ghost btn--sm" id="back-btn">Done</button>
+          <button class="btn btn--primary btn--sm" id="save-btn">Save changes</button>
+        </div>
+      </div>
+
+      <!-- Meta fields -->
+      <div class="meta-row">
+        <div class="form-group">
+          <label for="meta-title">Title</label>
+          <input type="text" id="meta-title" placeholder="Lesson title" />
+        </div>
+        <div class="form-group">
+          <label for="meta-topic">Topic</label>
+          <input type="text" id="meta-topic" placeholder="(optional)" />
+        </div>
+        <div class="form-group">
+          <label for="meta-timeframe">Time frame</label>
+          <input type="text" id="meta-timeframe" placeholder="e.g. 2 class periods" />
+        </div>
+      </div>
+
+      <!-- Quill editor -->
+      <div id="quill-editor"></div>
+
+      <div class="delete-area">
+        <button class="btn btn--danger btn--sm" id="delete-btn">Delete lesson plan</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Quill loaded last so it doesn't block the rest -->
+  <script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
+  <script>
+  /* ─────────────────────────────────────────
+     Shared session client
+  ───────────────────────────────────────── */
+  const sb = window.sb;
+
+  /* ─────────────────────────────────────────
+     URL: ?id=<lesson-plan-id>
+  ───────────────────────────────────────── */
+  function getLessonIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('id');
+  }
+
+  /* ─────────────────────────────────────────
+     State
+  ───────────────────────────────────────── */
+  let lessonId = null;
+  let quill    = null;
+  let currentUser    = null;
+  let currentProfile = null;
+  let dirty = false;
+  let saving = false;
+
+  const titleEl  = document.getElementById('meta-title');
+  const topicEl  = document.getElementById('meta-topic');
+  const timeEl   = document.getElementById('meta-timeframe');
+  const statusEl = document.getElementById('save-status');
+  const saveBtn  = document.getElementById('save-btn');
+  const backBtn  = document.getElementById('back-btn');
+  const deleteBtn= document.getElementById('delete-btn');
+  const cTag     = document.getElementById('classroom-tag');
+
+  /* ─────────────────────────────────────────
+     Status helper
+  ───────────────────────────────────────── */
+  function setStatus(text, level) {
+    statusEl.textContent = text || '';
+    statusEl.className = 'save-status' + (level ? ' ' + level : '');
+  }
+
+  /* ─────────────────────────────────────────
+     Init
+  ───────────────────────────────────────── */
+  (async () => {
+    const session = await window.Auth.requireSession();
+    currentUser    = session.user;
+    currentProfile = session.profile;
+    window.Auth.renderUserChip();
+
+    lessonId = getLessonIdFromUrl();
+    if (!lessonId) {
+      alert('No lesson plan id in URL.');
+      window.location.href = 'my-lessons.html';
+      return;
+    }
+
+    // Fetch lesson plan + the joined classroom for the topbar tag
+    const { data: plan, error } = await sb
+      .from('lesson_plans')
+      .select(`
+        id, classroom_id, teacher_id, title, content_html, content_delta,
+        topic, time_frame, created_at, updated_at,
+        classrooms ( teacher_name, grade_level, subject, school_name )
+      `)
+      .eq('id', lessonId)
+      .maybeSingle();
+
+    if (error || !plan) {
+      alert('Could not load that lesson plan.');
+      window.location.href = 'my-lessons.html';
+      return;
+    }
+
+    // Header tag
+    if (plan.classrooms) {
+      const c = plan.classrooms;
+      cTag.textContent = `${c.teacher_name} · ${c.grade_level} ${c.subject}`;
+      cTag.style.display = 'inline-block';
+    }
+
+    // Populate meta fields
+    titleEl.value = plan.title || '';
+    topicEl.value = plan.topic || '';
+    timeEl.value  = plan.time_frame || '';
+    document.title = (plan.title || 'Lesson') + ' — Lesson Editor';
+
+    // Set up Quill
+    quill = new Quill('#quill-editor', {
+      theme: 'snow',
+      placeholder: 'Edit your lesson plan…',
+      modules: {
+        toolbar: [
+          [{ header: [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['blockquote', 'code-block'],
+          ['link'],
+          [{ color: [] }, { background: [] }],
+          [{ align: [] }],
+          ['clean'],
+        ],
+      },
+    });
+
+    // Populate Quill: prefer Delta if present, else convert HTML
+    if (plan.content_delta && typeof plan.content_delta === 'object') {
+      quill.setContents(plan.content_delta);
+    } else if (plan.content_html) {
+      const delta = quill.clipboard.convert({ html: plan.content_html });
+      quill.setContents(delta);
+    }
+
+    // Track dirty state
+    quill.on('text-change', () => { dirty = true; setStatus('Unsaved changes', 'saving'); });
+    [titleEl, topicEl, timeEl].forEach(el =>
+      el.addEventListener('input', () => { dirty = true; setStatus('Unsaved changes', 'saving'); })
+    );
+  })();
+
+  /* ─────────────────────────────────────────
+     Save
+  ───────────────────────────────────────── */
+  async function saveLessonPlan() {
+    if (saving) return;
+    if (!quill) return;
+
+    const title = titleEl.value.trim();
+    if (!title) {
+      titleEl.focus();
+      setStatus('Title is required', 'error');
+      return;
+    }
+
+    saving = true;
+    setStatus('Saving…', 'saving');
+    saveBtn.disabled = true;
+
+    const delta = quill.getContents();
+    const html  = quill.root.innerHTML;
+
+    const { error } = await sb
+      .from('lesson_plans')
+      .update({
+        title:         title,
+        topic:         topicEl.value.trim() || null,
+        time_frame:    timeEl.value.trim() || null,
+        content_delta: delta,
+        content_html:  html,
+      })
+      .eq('id', lessonId);
+
+    saving = false;
+    saveBtn.disabled = false;
+
+    if (error) {
+      console.error('Save failed:', error);
+      setStatus('Save failed: ' + (error.message || 'unknown'), 'error');
+      return;
+    }
+
+    dirty = false;
+    setStatus('Saved', 'saved');
+    document.title = title + ' — Lesson Editor';
+    setTimeout(() => { if (!dirty) setStatus(''); }, 2500);
+  }
+
+  saveBtn.addEventListener('click', saveLessonPlan);
+
+  /* ─────────────────────────────────────────
+     Cmd/Ctrl + S to save
+  ───────────────────────────────────────── */
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      saveLessonPlan();
+    }
+  });
+
+  /* ─────────────────────────────────────────
+     Back / Done
+  ───────────────────────────────────────── */
+  backBtn.addEventListener('click', () => {
+    if (dirty && !confirm('You have unsaved changes. Leave anyway?')) return;
+    window.location.href = 'my-lessons.html';
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (dirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  /* ─────────────────────────────────────────
+     Delete
+  ───────────────────────────────────────── */
+  deleteBtn.addEventListener('click', async () => {
+    if (!confirm('Delete this lesson plan? This cannot be undone.')) return;
+
+    const { error } = await sb.from('lesson_plans').delete().eq('id', lessonId);
+    if (error) {
+      console.error(error);
+      setStatus('Delete failed', 'error');
+      return;
+    }
+    dirty = false; // skip unload warning
+    window.location.href = 'my-lessons.html';
+  });
+  </script>
+
+</body>
+</html>

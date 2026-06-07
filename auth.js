@@ -84,13 +84,28 @@
     signOutHandlers.push(handler);
   }
 
+  /* ── Public: hide/show role-scoped nav items ── */
+  function applyRoleGatedNav() {
+    if (!cached) return;
+    const role = cached.profile.role;
+    document.querySelectorAll('[data-teacher-only]').forEach(el => {
+      el.style.display = role === 'teacher' ? '' : 'none';
+    });
+    document.querySelectorAll('[data-admin-only]').forEach(el => {
+      el.style.display = role === 'admin' ? '' : 'none';
+    });
+  }
+
   /* ── Public: render the user chip into .topbar__user (if present) ── */
   function renderUserChip(target) {
     const mount = target ||
                   document.querySelector('.topbar__user') ||
                   document.querySelector('[data-user-chip]');
-    if (!mount) return;
 
+    // Hide/show data-{teacher,admin}-only elements regardless of chip mount
+    applyRoleGatedNav();
+
+    if (!mount) return;
     if (!cached) return;
     const { profile } = cached;
     const name = profile.display_name || profile.email || 'Account';
@@ -132,6 +147,7 @@
     currentUser,
     signOut,
     renderUserChip,
+    applyRoleGatedNav,
     onSignOut,
   };
 })();

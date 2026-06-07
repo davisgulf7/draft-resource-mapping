@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Lessons — Coordinated Learning Systems</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+
+  <style>
+    .lesson-card {
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .lesson-card__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .5rem;
+    }
+    .lesson-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      color: var(--usf-green);
+      margin: 0;
+      line-height: 1.25;
+    }
+    .lesson-card__meta {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      line-height: 1.45;
+    }
+    .lesson-card__snippet {
+      font-size: .82rem;
+      color: var(--ink-muted);
+      line-height: 1.45;
+      max-height: 3.2em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .lesson-card__footer {
+      margin-top: .5rem;
+      padding-top: .5rem;
+      border-top: 1px solid var(--rule-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .lesson-card__when {
+      font-size: .72rem;
+      letter-spacing: .03em;
+      color: var(--ink-muted);
+    }
+    .lesson-card__delete {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-size: .75rem;
+      padding: .2rem .4rem;
+      border-radius: var(--radius);
+    }
+    .lesson-card__delete:hover {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    .empty {
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--ink-muted);
+    }
+    .empty h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--usf-green);
+      margin: 0 0 .5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="topbar__brand" href="resource-mapping.html">
+        <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+        <div class="topbar__names">
+          <span class="topbar__org">Coordinated Learning Systems</span>
+          <span class="topbar__sub">University of South Florida</span>
+        </div>
+      </a>
+      <nav class="topbar__nav" aria-label="Main navigation">
+        <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="lesson-planner.html">Lesson Planner</a>
+        <a href="my-lessons.html" class="active" data-teacher-only>My Lessons</a>
+      </nav>
+      <div class="topbar__user" aria-label="Account"></div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="page-hero">
+    <div class="container">
+      <span class="page-hero__eyebrow">Saved lesson plans</span>
+      <h1>My Lessons</h1>
+      <p>Reopen and refine the plans you've saved from the lesson planner.</p>
+    </div>
+  </div>
+
+  <main>
+    <div class="section">
+      <div class="container">
+        <div id="lesson-list"><!-- populated by JS --></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  const sb = window.sb;
+  let currentUser    = null;
+  let currentProfile = null;
+
+  const listEl = document.getElementById('lesson-list');
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric'
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function snippetFromHtml(html) {
+    // Strip tags down to plain text, take first 200 chars
+    const text = (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    return text.slice(0, 220);
+  }
+
+  async function loadLessons() {
+    const { data: lessons, error } = await sb
+      .from('lesson_plans')
+      .select(`
+        id, title, topic, time_frame, content_html,
+        created_at, updated_at,
+        classrooms ( teacher_name, grade_level, subject )
+      `)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error(error);
+      listEl.innerHTML =
+        '<p style="color:var(--ink-muted);">Could not load lessons: ' + escapeHtml(error.message) + '</p>';
+      return;
+    }
+
+    if (!lessons || lessons.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty">
+          <h3>No saved lessons yet.</h3>
+          <p>
+            Open the <a href="lesson-planner.html">Lesson Planner</a>, generate a plan, then click
+            <strong>Save lesson plan</strong> below the AI response.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = `
+      <div class="card-grid">
+        ${lessons.map(renderCard).join('')}
+      </div>
+    `;
+
+    // Wire card click → open editor
+    listEl.querySelectorAll('[data-open]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        // Don't open if user clicked delete
+        if (e.target.closest('[data-delete]')) return;
+        window.location.href = `lesson-editor.html?id=${el.getAttribute('data-open')}`;
+      });
+    });
+
+    // Wire delete buttons
+    listEl.querySelectorAll('[data-delete]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id    = btn.getAttribute('data-delete');
+        const title = btn.getAttribute('data-title') || 'this lesson plan';
+        if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+        const { error: delErr } = await sb.from('lesson_plans').delete().eq('id', id);
+        if (delErr) {
+          alert('Could not delete: ' + delErr.message);
+          return;
+        }
+        loadLessons();
+      });
+    });
+  }
+
+  function renderCard(lesson) {
+    const c = lesson.classrooms || {};
+    const classroomLabel = c.teacher_name
+      ? `${escapeHtml(c.teacher_name)} · ${escapeHtml(c.grade_level || '')} ${escapeHtml(c.subject || '')}`.trim()
+      : '';
+    const snippet = snippetFromHtml(lesson.content_html);
+    const updated = fmtDate(lesson.updated_at || lesson.created_at);
+    const topic   = lesson.topic ? `<span>${escapeHtml(lesson.topic)}</span>` : '';
+    const tf      = lesson.time_frame ? `<span>${escapeHtml(lesson.time_frame)}</span>` : '';
+
+    return `
+      <div class="card card--clickable lesson-card" role="button" tabindex="0"
+           data-open="${lesson.id}"
+           onkeypress="if(event.key==='Enter') this.click()">
+        <div class="lesson-card__head">
+          <h3>${escapeHtml(lesson.title)}</h3>
+        </div>
+        ${classroomLabel ? `<div class="lesson-card__meta">${classroomLabel}</div>` : ''}
+        ${(topic || tf) ? `<div class="lesson-card__meta" style="display:flex; gap:.5rem; flex-wrap:wrap;">${topic}${tf}</div>` : ''}
+        <div class="lesson-card__snippet">${escapeHtml(snippet)}</div>
+        <div class="lesson-card__footer">
+          <span class="lesson-card__when">Updated ${updated}</span>
+          <button class="lesson-card__delete"
+                  data-delete="${lesson.id}"
+                  data-title="${escapeHtml(lesson.title)}"
+                  title="Delete this lesson plan">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  (async () => {
+    const session = await window.Auth.requireSession();
+    currentUser    = session.user;
+    currentProfile = session.profile;
+    window.Auth.renderUserChip();
+
+    await loadLessons();
+  })();
+  </script>
+
+</body>
+</html>
