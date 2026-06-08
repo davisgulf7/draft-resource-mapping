@@ -1287,8 +1287,8 @@ selectEl.addEventListener('change', async () => {
   buildContextPanel(classroom, resources, notes, schoolResources);
 
   // Update chat header
-  chatTitle.textContent = `${classrooms.teacher_name}'s Classroom`;
-  chatSubtitle.textContent = `${classrooms.grade_level} ${classrooms.subject} — ${classrooms.school_name}`;
+  chatTitle.textContent = `${classroom.teacher_name}'s Classroom`;
+  chatSubtitle.textContent = `${classroom.grade_level} ${classroom.subject} — ${classroom.school_name}`;
 
   // Show chat UI
   chatEmptyState.style.display = 'none';
