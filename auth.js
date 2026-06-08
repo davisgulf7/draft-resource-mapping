@@ -126,11 +126,13 @@
     chip.className = 'user-chip';
 
     chip.innerHTML = `
-      <span class="user-chip__avatar" aria-hidden="true">${initialFrom(name)}</span>
-      <span class="user-chip__meta">
-        <span class="user-chip__name">${escapeHtml(name)}</span>
-        <span class="user-chip__role">${escapeHtml(profile.role)}</span>
-      </span>
+      <a class="user-chip__link" href="account.html" title="Edit your account">
+        <span class="user-chip__avatar" aria-hidden="true">${initialFrom(name)}</span>
+        <span class="user-chip__meta">
+          <span class="user-chip__name">${escapeHtml(name)}</span>
+          <span class="user-chip__role">${escapeHtml(profile.role)}</span>
+        </span>
+      </a>
       <button type="button" class="user-chip__signout btn btn--ghost btn--sm" title="Sign out">Sign out</button>
     `;
 

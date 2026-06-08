@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Account — Coordinated Learning Systems</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Aleo:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="main.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+
+  <style>
+    .account-shell {
+      max-width: 720px;
+      margin: 1.5rem auto 3rem;
+      padding: 0 var(--gutter);
+    }
+
+    .account-panel {
+      background: #fff;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-lg);
+      padding: 1.4rem 1.5rem 1.5rem;
+      margin-bottom: 1.5rem;
+      border-top: 4px solid var(--usf-green);
+    }
+    .account-panel h2 {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      color: var(--usf-green);
+      margin: 0 0 .35rem;
+    }
+    .account-panel p.muted {
+      color: var(--ink-muted);
+      font-size: .85rem;
+      margin: 0 0 1.1rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: .25rem;
+    }
+    .form-group input {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .95rem;
+      background: #fff;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--usf-green);
+      box-shadow: 0 0 0 3px rgba(0, 103, 71, .1);
+    }
+    .form-group small.hint {
+      color: var(--ink-muted);
+      font-size: .78rem;
+      display: block;
+      margin-top: .25rem;
+    }
+
+    .save-row {
+      display: flex;
+      gap: .75rem;
+      align-items: center;
+      justify-content: flex-end;
+      margin-top: .8rem;
+    }
+    .save-status {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      margin-right: auto;
+    }
+    .save-status.saving { color: var(--usf-gold); }
+    .save-status.saved  { color: #047857; font-weight: 700; }
+    .save-status.error  { color: #b91c1c; }
+
+    .current-email {
+      font-family: monospace;
+      background: var(--bg-alt);
+      padding: .35rem .55rem;
+      border-radius: var(--radius);
+      font-size: .85rem;
+      display: inline-block;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <a class="topbar__brand" href="resource-mapping.html">
+        <div class="topbar__logo-mark" aria-hidden="true">CLS</div>
+        <div class="topbar__names">
+          <span class="topbar__org">Coordinated Learning Systems</span>
+          <span class="topbar__sub">University of South Florida</span>
+        </div>
+      </a>
+      <nav class="topbar__nav" aria-label="Main navigation">
+        <a href="admin-dashboard.html" data-admin-only>Admin Dashboard</a>
+        <a href="admin-teachers.html"  data-admin-only>Teachers</a>
+        <a href="resource-mapping.html">Resource Mapping</a>
+        <a href="my-classroom.html" data-teacher-only>My Classroom</a>
+        <a href="school-resources.html">School Resources</a>
+        <a href="lesson-planner.html">Lesson Planner</a>
+        <a href="my-lessons.html" data-teacher-only>My Lessons</a>
+      </nav>
+      <div class="topbar__user" aria-label="Account"></div>
+    </div>
+  </header>
+
+  <div class="page-hero">
+    <div class="container">
+      <span class="page-hero__eyebrow">Account</span>
+      <h1>My Account</h1>
+      <p>Update your display name, change your sign-in email, or set a new password.</p>
+    </div>
+  </div>
+
+  <main class="account-shell">
+
+    <!-- ── Display name ── -->
+    <section class="account-panel">
+      <h2>Display name</h2>
+      <p class="muted">This is the name that appears in the topbar, on saved lessons, and on the teachers list.</p>
+
+      <form id="name-form">
+        <div class="form-group">
+          <label for="name-input">Display name</label>
+          <input type="text" id="name-input" maxlength="120" autocomplete="name" />
+        </div>
+        <div class="save-row">
+          <span class="save-status" id="name-status"></span>
+          <button type="submit" class="btn btn--primary" id="name-save">Save name</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Email ── -->
+    <section class="account-panel">
+      <h2>Email address</h2>
+      <p class="muted">This is the email you sign in with.</p>
+      <p>Current: <span class="current-email" id="current-email">—</span></p>
+
+      <form id="email-form">
+        <div class="form-group">
+          <label for="email-input">New email</label>
+          <input type="email" id="email-input" autocomplete="email" />
+          <small class="hint">After saving, you'll keep working with your current session. If email confirmation is enabled in Supabase, you'll need to confirm the new address from a link sent to it before signing in next time.</small>
+        </div>
+        <div class="save-row">
+          <span class="save-status" id="email-status"></span>
+          <button type="submit" class="btn btn--primary" id="email-save">Update email</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ── Password ── -->
+    <section class="account-panel">
+      <h2>Password</h2>
+      <p class="muted">Choose something at least 8 characters long. You won't be asked to type your current password — the active session is enough.</p>
+
+      <form id="password-form">
+        <div class="form-group">
+          <label for="password-new">New password</label>
+          <input type="password" id="password-new" minlength="8" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label for="password-confirm">Confirm new password</label>
+          <input type="password" id="password-confirm" minlength="8" autocomplete="new-password" />
+        </div>
+        <div class="save-row">
+          <span class="save-status" id="password-status"></span>
+          <button type="submit" class="btn btn--primary" id="password-save">Update password</button>
+        </div>
+      </form>
+    </section>
+
+  </main>
+
+  <script>
+  const sb = window.sb;
+
+  /* ─────────────────────────────────────────
+     State
+  ───────────────────────────────────────── */
+  let currentUser    = null;
+  let currentProfile = null;
+
+  /* ─────────────────────────────────────────
+     Status helpers
+  ───────────────────────────────────────── */
+  function setStatus(id, text, level) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'save-status' + (level ? ' ' + level : '');
+  }
+  function clearStatus(id) { setStatus(id, '', ''); }
+  function flashSaved(id) {
+    setStatus(id, 'Saved', 'saved');
+    setTimeout(() => clearStatus(id), 2500);
+  }
+
+  /* ─────────────────────────────────────────
+     Init
+  ───────────────────────────────────────── */
+  (async () => {
+    const session = await window.Auth.requireSession();
+    currentUser    = session.user;
+    currentProfile = session.profile;
+    window.Auth.renderUserChip();
+
+    document.getElementById('name-input').value     = currentProfile.display_name || '';
+    document.getElementById('current-email').textContent = currentUser.email || '—';
+  })();
+
+  /* ─────────────────────────────────────────
+     Display name
+  ───────────────────────────────────────── */
+  document.getElementById('name-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const name = document.getElementById('name-input').value.trim();
+    if (!name) {
+      setStatus('name-status', 'Name cannot be empty.', 'error');
+      return;
+    }
+
+    setStatus('name-status', 'Saving…', 'saving');
+    document.getElementById('name-save').disabled = true;
+
+    const { error } = await sb
+      .from('profiles')
+      .update({ display_name: name })
+      .eq('id', currentUser.id);
+
+    document.getElementById('name-save').disabled = false;
+
+    if (error) {
+      setStatus('name-status', 'Save failed: ' + (error.message || 'unknown'), 'error');
+      return;
+    }
+
+    currentProfile.display_name = name;
+    flashSaved('name-status');
+
+    // Refresh the chip so the topbar reflects the new name immediately.
+    window.Auth.renderUserChip();
+  });
+
+  /* ─────────────────────────────────────────
+     Email
+  ───────────────────────────────────────── */
+  document.getElementById('email-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const newEmail = document.getElementById('email-input').value.trim().toLowerCase();
+    if (!newEmail) {
+      setStatus('email-status', 'Enter a new email address.', 'error');
+      return;
+    }
+    if (newEmail === (currentUser.email || '').toLowerCase()) {
+      setStatus('email-status', 'That is already your current email.', 'error');
+      return;
+    }
+
+    setStatus('email-status', 'Saving…', 'saving');
+    document.getElementById('email-save').disabled = true;
+
+    const { data, error } = await sb.auth.updateUser({ email: newEmail });
+
+    document.getElementById('email-save').disabled = false;
+
+    if (error) {
+      setStatus('email-status', 'Update failed: ' + (error.message || 'unknown'), 'error');
+      return;
+    }
+
+    // Supabase returns the updated user once the change goes through.
+    // If email confirmation is on, the new email is pending until the
+    // user clicks the link; in that case data.user.email may still
+    // reflect the old value. Show what we get back.
+    if (data?.user?.email) {
+      currentUser = data.user;
+      document.getElementById('current-email').textContent = data.user.email;
+    }
+    document.getElementById('email-input').value = '';
+    flashSaved('email-status');
+  });
+
+  /* ─────────────────────────────────────────
+     Password
+  ───────────────────────────────────────── */
+  document.getElementById('password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const newPw     = document.getElementById('password-new').value;
+    const confirmPw = document.getElementById('password-confirm').value;
+
+    if (!newPw || newPw.length < 8) {
+      setStatus('password-status', 'Password must be at least 8 characters.', 'error');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setStatus('password-status', 'New password and confirmation do not match.', 'error');
+      return;
+    }
+
+    setStatus('password-status', 'Saving…', 'saving');
+    document.getElementById('password-save').disabled = true;
+
+    const { error } = await sb.auth.updateUser({ password: newPw });
+
+    document.getElementById('password-save').disabled = false;
+
+    if (error) {
+      setStatus('password-status', 'Update failed: ' + (error.message || 'unknown'), 'error');
+      return;
+    }
+
+    document.getElementById('password-new').value     = '';
+    document.getElementById('password-confirm').value = '';
+    flashSaved('password-status');
+  });
+  </script>
+
+</body>
+</html>
