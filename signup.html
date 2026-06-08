@@ -136,7 +136,7 @@
     <div class="auth-card">
       <div class="brand-mark"><span>CLS</span></div>
       <h1>Create your account</h1>
-      <p class="muted">Coordinated Learning Systems — Instructional Intelligence Coordination</p>
+      <p class="muted" id="signup-byline">Coordinated Learning Systems — Instructional Intelligence Coordination</p>
 
       <div class="auth-error"   id="auth-error"   role="alert" aria-live="polite"></div>
       <div class="auth-success" id="auth-success" role="status" aria-live="polite"></div>
@@ -196,6 +196,7 @@
     const okBox     = document.getElementById('auth-success');
     const submitBtn = document.getElementById('submit-btn');
     const form      = document.getElementById('signup-form');
+    const bylineEl  = document.getElementById('signup-byline');
 
     /* If already signed in, jump to the role-specific home. */
     (async () => {
@@ -204,6 +205,26 @@
         await window.Auth.goHome();
       }
     })();
+
+    /* Anon-readable school name: show "Sign up for <school>" if set. */
+    (async () => {
+      const SCHOOL_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+      const { data } = await window.sb
+        .from('school_profile')
+        .select('school_name')
+        .eq('id', SCHOOL_PROFILE_ID)
+        .maybeSingle();
+      if (data?.school_name && data.school_name.trim()) {
+        bylineEl.innerHTML = 'Sign up for <strong>' + escapeHtml(data.school_name) + '</strong>';
+        document.title = 'Sign up for ' + data.school_name;
+      }
+    })();
+
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
 
     function showErr(msg) {
       okBox.classList.remove('show');

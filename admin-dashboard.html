@@ -134,6 +134,59 @@
       0%,100% { opacity: .55; }
       50%     { opacity: 1; }
     }
+
+    /* First-admin onboarding banner */
+    .onboard-banner {
+      display: none;
+      background: var(--bg-alt);
+      border-left: 4px solid var(--usf-gold);
+      border-radius: var(--radius-lg);
+      padding: 1.1rem 1.25rem 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .04);
+    }
+    .onboard-banner.show { display: block; }
+    .onboard-banner h2 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: var(--usf-green);
+      margin: 0 0 .35rem;
+    }
+    .onboard-banner p {
+      margin: 0 0 .85rem;
+      color: var(--ink-muted);
+      font-size: .9rem;
+      max-width: 60ch;
+    }
+    .onboard-row {
+      display: flex;
+      gap: .6rem;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+    .onboard-row input {
+      flex: 1 1 240px;
+      min-width: 0;
+      padding: .55rem .7rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .95rem;
+      background: #fff;
+    }
+    .onboard-row input:focus {
+      outline: none;
+      border-color: var(--usf-green);
+      box-shadow: 0 0 0 3px rgba(0, 103, 71, .12);
+    }
+    .onboard-row .btn { flex: 0 0 auto; }
+    .onboard-status {
+      font-size: .8rem;
+      margin: .55rem 0 0;
+      min-height: 1.1em;
+    }
+    .onboard-status.error { color: #b91c1c; }
+    .onboard-status.saved { color: #047857; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -164,7 +217,7 @@
   <!-- Hero -->
   <div class="page-hero">
     <div class="container">
-      <span class="page-hero__eyebrow">Admin</span>
+      <span class="page-hero__eyebrow" id="hero-eyebrow">Admin</span>
       <h1>School Overview</h1>
       <p>A quick snapshot of the classrooms, teachers, resources, and saved lesson plans across the school.</p>
     </div>
@@ -173,6 +226,17 @@
   <main>
     <div class="section">
       <div class="container">
+
+        <!-- Onboarding banner: shown only when school_profile.school_name is empty -->
+        <div class="onboard-banner" id="onboard-banner" role="region" aria-labelledby="onboard-title">
+          <h2 id="onboard-title">Let's set up your school.</h2>
+          <p>This deployment represents one school. Tell us its name to get started — you can fill in the rest of the technology profile any time on the <a href="school-resources.html">School Resources</a> page.</p>
+          <form class="onboard-row" id="onboard-form">
+            <input type="text" id="onboard-input" placeholder="e.g. Sunridge Elementary" required maxlength="200" />
+            <button type="submit" class="btn btn--primary" id="onboard-save">Save school name</button>
+          </form>
+          <p class="onboard-status" id="onboard-status"></p>
+        </div>
 
         <!-- Stat tiles -->
         <div class="stat-grid">
@@ -264,13 +328,63 @@
   }
 
   /* ─────────────────────────────────────────
+     School Profile singleton + onboarding banner
+  ───────────────────────────────────────── */
+  const SCHOOL_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+  const heroEyebrow      = document.getElementById('hero-eyebrow');
+  const onboardBanner    = document.getElementById('onboard-banner');
+  const onboardForm      = document.getElementById('onboard-form');
+  const onboardInput     = document.getElementById('onboard-input');
+  const onboardSaveBtn   = document.getElementById('onboard-save');
+  const onboardStatusEl  = document.getElementById('onboard-status');
+
+  function applySchoolName(name) {
+    if (name && name.trim()) {
+      heroEyebrow.textContent = name + ' · Admin';
+      onboardBanner.classList.remove('show');
+    } else {
+      heroEyebrow.textContent = 'Admin';
+      onboardBanner.classList.add('show');
+      setTimeout(() => onboardInput.focus(), 50);
+    }
+  }
+
+  onboardForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = onboardInput.value.trim();
+    if (!name) return;
+
+    onboardSaveBtn.disabled = true;
+    onboardSaveBtn.textContent = 'Saving…';
+    onboardStatusEl.className = 'onboard-status';
+    onboardStatusEl.textContent = '';
+
+    const { error } = await sb
+      .from('school_profile')
+      .update({ school_name: name })
+      .eq('id', SCHOOL_PROFILE_ID);
+
+    if (error) {
+      onboardStatusEl.className = 'onboard-status error';
+      onboardStatusEl.textContent = 'Could not save: ' + (error.message || 'unknown error');
+      onboardSaveBtn.disabled = false;
+      onboardSaveBtn.textContent = 'Save school name';
+      return;
+    }
+
+    onboardStatusEl.className = 'onboard-status saved';
+    onboardStatusEl.textContent = 'Saved.';
+    setTimeout(() => applySchoolName(name), 600);
+  });
+
+  /* ─────────────────────────────────────────
      Init
   ───────────────────────────────────────── */
   (async () => {
     await window.Auth.requireSession({ allowedRoles: ['admin'] });
     window.Auth.renderUserChip();
 
-    // Parallel count queries (RLS allows admin SELECT all)
+    // Parallel: count queries + school profile (for the eyebrow + banner)
     const [
       classrooms,
       teachers,
@@ -278,6 +392,7 @@
       classroomRes,
       lessons,
       recentLessons,
+      profile,
     ] = await Promise.all([
       sb.from('classrooms').select('id', { count: 'exact', head: true }),
       sb.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher'),
@@ -288,7 +403,10 @@
         .select('id, title, updated_at, classrooms(teacher_name, grade_level, subject)')
         .order('updated_at', { ascending: false })
         .limit(6),
+      sb.from('school_profile').select('school_name').eq('id', SCHOOL_PROFILE_ID).maybeSingle(),
     ]);
+
+    applySchoolName(profile?.data?.school_name);
 
     setStat('stat-classrooms',          classrooms.count          ?? 0);
     setStat('stat-teachers',            teachers.count            ?? 0);

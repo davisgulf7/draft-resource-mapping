@@ -40,7 +40,7 @@
 <!-- ── Hero ── -->
 <div class="page-hero">
   <div class="container">
-    <span class="page-hero__eyebrow">Demo 1 — Instructional Intelligence Coordination</span>
+    <span class="page-hero__eyebrow" id="hero-eyebrow">Instructional Intelligence Coordination</span>
     <h1>Instructional Resource Mapping</h1>
     <p>Build a clear picture of what each classroom has — so instruction can be designed around what teachers and students can actually use.</p>
   </div>
@@ -172,7 +172,7 @@
             <label for="cl-teacher">Teacher Name *</label>
             <input type="text" id="cl-teacher" placeholder="e.g., Ms. Rodriguez" required />
           </div>
-          <div class="form-group">
+          <div class="form-group" id="cl-school-group">
             <label for="cl-school">School Name *</label>
             <input type="text" id="cl-school" placeholder="e.g., Sunridge Elementary" required />
           </div>
@@ -588,6 +588,14 @@ function prefillAddClassroomFromProfile(profile) {
   if (!profile) return;
   if (profile.school_name) {
     document.getElementById('cl-school').value = profile.school_name;
+    // Once the school has a configured name, the field stops being an
+    // input the teacher has to think about. Hide the form-group; the
+    // pre-filled value still submits with the rest of the form.
+    const grp = document.getElementById('cl-school-group');
+    if (grp) grp.style.display = 'none';
+    // Surface the school name in the page hero too
+    const eyebrow = document.getElementById('hero-eyebrow');
+    if (eyebrow) eyebrow.textContent = profile.school_name;
   }
   if (profile.primary_ecosystem) {
     document.getElementById('cl-ecosystem').value = profile.primary_ecosystem;
