@@ -555,17 +555,9 @@ document.getElementById('form-add-classroom').addEventListener('submit', async (
     return;
   }
 
-  // If signed in as a teacher, link the new classroom to this user
-  // so RLS lets them see it on subsequent reads.
-  if (currentRole === 'teacher' && currentUser) {
-    const { error: linkErr } = await db.from('classroom_teachers').insert({
-      teacher_id:   currentUser.id,
-      classroom_id: newClassroom.id,
-    });
-    if (linkErr) {
-      console.error('Could not link teacher to classroom:', linkErr);
-    }
-  }
+  // (Teacher↔classroom link is auto-created by the AFTER INSERT trigger
+  //  handle_new_classroom on the classrooms table, so no client insert
+  //  into classroom_teachers is required here.)
 
   // Save notes
   const noteInserts = [];
