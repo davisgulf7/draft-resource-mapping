@@ -170,6 +170,68 @@
       border-left: 3px solid var(--usf-gold);
       border-radius: var(--radius);
     }
+
+    /* School Profile panel */
+    .panel--profile {
+      margin-bottom: 1.5rem;
+      border-top: 4px solid var(--usf-green);
+    }
+    .panel--profile .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 680px) {
+      .panel--profile .form-row-2 { grid-template-columns: 1fr; }
+    }
+
+    .profile-save-bar {
+      display: flex;
+      gap: .75rem;
+      align-items: center;
+      justify-content: flex-end;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--rule-light);
+    }
+    .profile-save-bar__status {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      margin-right: auto;
+    }
+    .profile-save-bar__status.dirty { color: var(--usf-gold); font-weight: 700; }
+    .profile-save-bar__status.saved { color: #047857;          font-weight: 700; }
+    .profile-save-bar__status.error { color: #b91c1c;          font-weight: 700; }
+
+    /* Teacher read-only chip view */
+    .profile-readonly__row {
+      display: flex;
+      align-items: baseline;
+      gap: .75rem;
+      margin-bottom: .65rem;
+      flex-wrap: wrap;
+    }
+    .profile-readonly__row:last-child { margin-bottom: 0; }
+    .profile-readonly__label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      flex: 0 0 auto;
+      min-width: 9rem;
+    }
+    .profile-readonly__chips { display: flex; gap: .35rem; flex-wrap: wrap; flex: 1 1 auto; }
+    .profile-readonly__chips .tag { font-size: .78rem; }
+    .profile-readonly__value {
+      font-size: .9rem;
+      color: var(--ink);
+    }
+    .profile-readonly__empty {
+      font-size: .8rem;
+      color: var(--ink-muted);
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -209,6 +271,78 @@
   <main>
     <div class="section">
       <div class="container">
+
+        <!-- ── SCHOOL PROFILE PANEL ─────────────────────────────── -->
+        <div class="panel panel--profile" id="profile-panel" style="display:none;">
+
+          <!-- Admin: editable form -->
+          <div id="profile-admin" class="hidden">
+            <h2>School Profile</h2>
+            <p style="color:var(--ink-muted); font-size:.85rem; margin:0 0 1rem;">
+              The school's overall technology setup. Teachers see this read-only, and the lesson planner uses it alongside each classroom's own inventory.
+            </p>
+
+            <div class="inline-alert inline-alert--ok"  id="profile-ok"></div>
+            <div class="inline-alert inline-alert--err" id="profile-err"></div>
+
+            <form id="profile-form">
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label for="sp-school-name">School name</label>
+                  <input type="text" id="sp-school-name" placeholder="e.g. Sunridge Elementary" maxlength="200" />
+                </div>
+                <div class="form-group">
+                  <label for="sp-ecosystem">Primary technology ecosystem</label>
+                  <select id="sp-ecosystem">
+                    <option value="">— Select —</option>
+                    <option>Google</option>
+                    <option>Microsoft</option>
+                    <option>Apple</option>
+                    <option>Mixed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Available devices school-wide</label>
+                <div class="checkbox-group" id="sp-devices-group">
+                  <label class="checkbox-item"><input type="checkbox" name="sp-devices" value="Chromebook" /> Chromebook</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-devices" value="Windows PC" /> Windows PC</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-devices" value="Mac" /> Mac</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-devices" value="iPad" /> iPad</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-devices" value="Android Tablet" /> Android Tablet</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-devices" value="iPhone" /> iPhone</label>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label>Software platforms and tools</label>
+                <div class="checkbox-group" id="sp-platforms-group">
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Google Workspace" /> Google Workspace</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Microsoft 365" /> Microsoft 365</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Apple Education" /> Apple Education</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Google Classroom" /> Google Classroom</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Canvas" /> Canvas</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Seesaw" /> Seesaw</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Schoology" /> Schoology</label>
+                  <label class="checkbox-item"><input type="checkbox" name="sp-platforms" value="Clever" /> Clever</label>
+                </div>
+              </div>
+
+              <div class="profile-save-bar">
+                <span class="profile-save-bar__status" id="profile-status"></span>
+                <button type="submit" class="btn btn--primary" id="profile-save-btn">Save changes</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Teacher: read-only view -->
+          <div id="profile-teacher" class="hidden">
+            <h2>School Profile</h2>
+            <div id="profile-readonly"></div>
+          </div>
+
+        </div>
 
         <!-- TEACHER view: just the list -->
         <div id="teacher-view" class="hidden">
@@ -494,6 +628,155 @@
   }
 
   /* ─────────────────────────────────────────
+     School Profile (singleton)
+  ───────────────────────────────────────── */
+  const SCHOOL_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+  let currentProfile = null;
+  let profileDirty = false;
+  const profilePanel = document.getElementById('profile-panel');
+
+  function setProfileStatus(text, level) {
+    const el = document.getElementById('profile-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'profile-save-bar__status' + (level ? ' ' + level : '');
+  }
+
+  function setChecked(name, values) {
+    const set = new Set((values || []).map(String));
+    document.querySelectorAll(`input[type="checkbox"][name="${name}"]`)
+      .forEach(cb => { cb.checked = set.has(cb.value); });
+  }
+  function getChecked(name) {
+    return Array.from(document.querySelectorAll(`input[type="checkbox"][name="${name}"]:checked`))
+      .map(cb => cb.value);
+  }
+
+  async function loadProfile() {
+    const { data, error } = await sb
+      .from('school_profile')
+      .select('*')
+      .eq('id', SCHOOL_PROFILE_ID)
+      .maybeSingle();
+
+    if (error) { console.error('Could not load school profile:', error); return; }
+    currentProfile = data || {
+      school_name: '',
+      primary_ecosystem: '',
+      available_devices: [],
+      available_platforms: [],
+    };
+
+    profilePanel.style.display = 'block';
+
+    if (currentRole === 'admin') {
+      document.getElementById('profile-admin').classList.remove('hidden');
+      populateProfileForm();
+    } else {
+      document.getElementById('profile-teacher').classList.remove('hidden');
+      renderProfileReadonly();
+    }
+  }
+
+  function populateProfileForm() {
+    document.getElementById('sp-school-name').value = currentProfile.school_name || '';
+    document.getElementById('sp-ecosystem').value   = currentProfile.primary_ecosystem || '';
+    setChecked('sp-devices',   currentProfile.available_devices);
+    setChecked('sp-platforms', currentProfile.available_platforms);
+    profileDirty = false;
+    setProfileStatus('');
+  }
+
+  function renderProfileReadonly() {
+    const wrap = document.getElementById('profile-readonly');
+    const p = currentProfile;
+    const isEmpty = !p.school_name && !p.primary_ecosystem
+                    && (!p.available_devices || p.available_devices.length === 0)
+                    && (!p.available_platforms || p.available_platforms.length === 0);
+
+    if (isEmpty) {
+      wrap.innerHTML = `<p class="profile-readonly__empty">School admin hasn't filled this in yet.</p>`;
+      return;
+    }
+
+    const chips = (arr, variant) => (arr || []).length
+      ? arr.map(v => `<span class="tag tag--${variant}">${escapeHtml(v)}</span>`).join('')
+      : `<span class="profile-readonly__empty">—</span>`;
+
+    wrap.innerHTML = `
+      <div class="profile-readonly__row">
+        <span class="profile-readonly__label">School</span>
+        <span class="profile-readonly__value">${escapeHtml(p.school_name || '—')}</span>
+      </div>
+      <div class="profile-readonly__row">
+        <span class="profile-readonly__label">Primary ecosystem</span>
+        <div class="profile-readonly__chips">
+          ${p.primary_ecosystem
+            ? `<span class="tag tag--green">${escapeHtml(p.primary_ecosystem)}</span>`
+            : `<span class="profile-readonly__empty">—</span>`}
+        </div>
+      </div>
+      <div class="profile-readonly__row">
+        <span class="profile-readonly__label">Devices</span>
+        <div class="profile-readonly__chips">${chips(p.available_devices, 'sand')}</div>
+      </div>
+      <div class="profile-readonly__row">
+        <span class="profile-readonly__label">Platforms &amp; tools</span>
+        <div class="profile-readonly__chips">${chips(p.available_platforms, 'teal')}</div>
+      </div>
+    `;
+  }
+
+  function wireProfileForm() {
+    const form = document.getElementById('profile-form');
+    const okBox  = document.getElementById('profile-ok');
+    const errBox = document.getElementById('profile-err');
+    const saveBtn = document.getElementById('profile-save-btn');
+
+    form.addEventListener('input', () => {
+      profileDirty = true;
+      setProfileStatus('Unsaved changes', 'dirty');
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      okBox.classList.remove('show');
+      errBox.classList.remove('show');
+
+      const payload = {
+        school_name:         document.getElementById('sp-school-name').value.trim() || null,
+        primary_ecosystem:   document.getElementById('sp-ecosystem').value || null,
+        available_devices:   getChecked('sp-devices'),
+        available_platforms: getChecked('sp-platforms'),
+      };
+
+      saveBtn.disabled = true;
+      setProfileStatus('Saving…', 'dirty');
+
+      const { error } = await sb
+        .from('school_profile')
+        .update(payload)
+        .eq('id', SCHOOL_PROFILE_ID);
+
+      saveBtn.disabled = false;
+
+      if (error) {
+        setProfileStatus('Save failed: ' + (error.message || 'unknown'), 'error');
+        return;
+      }
+
+      currentProfile = { ...currentProfile, ...payload };
+      profileDirty = false;
+      setProfileStatus('Saved', 'saved');
+      setTimeout(() => { if (!profileDirty) setProfileStatus(''); }, 2500);
+    });
+  }
+
+  window.addEventListener('beforeunload', (e) => {
+    if (profileDirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  /* ─────────────────────────────────────────
      Init
   ───────────────────────────────────────── */
   (async () => {
@@ -504,11 +787,12 @@
     if (currentRole === 'admin') {
       document.getElementById('admin-view').classList.remove('hidden');
       wireAddForm();
+      wireProfileForm();
     } else {
       document.getElementById('teacher-view').classList.remove('hidden');
     }
 
-    await loadResources();
+    await Promise.all([loadProfile(), loadResources()]);
   })();
   </script>
 

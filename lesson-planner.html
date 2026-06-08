@@ -1042,8 +1042,9 @@ function showTyping(show) {
 /* ─────────────────────────────────────────
    Build context display from classroom data
 ───────────────────────────────────────── */
-function buildContextPanel(classroom, resources, notes, schoolResources) {
+function buildContextPanel(classroom, resources, notes, schoolResources, schoolProfile) {
   schoolResources = schoolResources || [];
+  schoolProfile   = schoolProfile   || null;
 
   // Clear existing context (keep placeholder ref)
   const oldSections = contextBody.querySelectorAll('.ctx-section');
@@ -1126,6 +1127,40 @@ function buildContextPanel(classroom, resources, notes, schoolResources) {
     contextBody.appendChild(resSection);
   }
 
+  // ── School technology profile (building-wide ecosystem/devices/platforms)
+  if (schoolProfile && (
+        schoolProfile.primary_ecosystem ||
+        (schoolProfile.available_devices   && schoolProfile.available_devices.length) ||
+        (schoolProfile.available_platforms && schoolProfile.available_platforms.length)
+      )) {
+    const spSection = makeSection();
+    let spHtml = '<p class="ctx-section-label">School Technology</p>';
+
+    if (schoolProfile.primary_ecosystem ||
+        (schoolProfile.available_devices && schoolProfile.available_devices.length)) {
+      spHtml += '<div class="ctx-chips">';
+      if (schoolProfile.primary_ecosystem) {
+        spHtml += `<span class="ctx-chip accent">${escHtml(schoolProfile.primary_ecosystem)}</span>`;
+      }
+      (schoolProfile.available_devices || []).forEach(d => {
+        spHtml += `<span class="ctx-chip">${escHtml(d)}</span>`;
+      });
+      spHtml += '</div>';
+    }
+
+    if (schoolProfile.available_platforms && schoolProfile.available_platforms.length) {
+      spHtml += '<p class="ctx-resource-category-name" style="margin-top:.6rem;">Platforms &amp; Tools</p>';
+      spHtml += '<div class="ctx-chips">';
+      schoolProfile.available_platforms.forEach(p => {
+        spHtml += `<span class="ctx-chip">${escHtml(p)}</span>`;
+      });
+      spHtml += '</div>';
+    }
+
+    spSection.innerHTML = spHtml;
+    contextBody.appendChild(spSection);
+  }
+
   // ── School-wide resources (building-wide, admin-managed)
   if (schoolResources.length) {
     const swSection = makeSection();
@@ -1180,8 +1215,9 @@ function makeSection() {
 /* ─────────────────────────────────────────
    Build compact system-prompt context string
 ───────────────────────────────────────── */
-function buildContextString(classroom, resources, notes, schoolResources) {
+function buildContextString(classroom, resources, notes, schoolResources, schoolProfile) {
   schoolResources = schoolResources || [];
+  schoolProfile   = schoolProfile   || null;
   const lines = [];
 
   lines.push(`CLASSROOM CONTEXT`);
@@ -1215,6 +1251,27 @@ function buildContextString(classroom, resources, notes, schoolResources) {
     Object.entries(grouped).forEach(([cat, items]) => {
       lines.push(`${cat}: ${items.join(' | ')}`);
     });
+  }
+
+  if (schoolProfile && (
+        schoolProfile.school_name ||
+        schoolProfile.primary_ecosystem ||
+        (schoolProfile.available_devices   && schoolProfile.available_devices.length) ||
+        (schoolProfile.available_platforms && schoolProfile.available_platforms.length)
+      )) {
+    lines.push(`\nSCHOOL TECHNOLOGY PROFILE (building-wide context — available across all classrooms)`);
+    if (schoolProfile.school_name) {
+      lines.push(`School: ${schoolProfile.school_name}`);
+    }
+    if (schoolProfile.primary_ecosystem) {
+      lines.push(`Primary Ecosystem: ${schoolProfile.primary_ecosystem}`);
+    }
+    if (schoolProfile.available_devices && schoolProfile.available_devices.length) {
+      lines.push(`Available Devices (school-wide): ${schoolProfile.available_devices.join(', ')}`);
+    }
+    if (schoolProfile.available_platforms && schoolProfile.available_platforms.length) {
+      lines.push(`Platforms & Tools (school-wide): ${schoolProfile.available_platforms.join(', ')}`);
+    }
   }
 
   if (schoolResources.length) {
@@ -1252,14 +1309,18 @@ selectEl.addEventListener('change', async () => {
     return;
   }
 
-  // Fetch classroom, classroom-level resources, notes, AND school-wide
-  // resources in parallel. School resources are read-allowed for any
-  // authenticated user (RLS policy school_resources_select_all_auth).
-  const [classroomRes, resourcesRes, notesRes, schoolRes] = await Promise.all([
+  // Fetch classroom, classroom-level resources, notes, school-wide
+  // resources, AND the school profile in parallel. School resources and
+  // school_profile are both readable by any authenticated user via their
+  // *_select_all_auth RLS policies.
+  const SCHOOL_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+
+  const [classroomRes, resourcesRes, notesRes, schoolRes, profileRes] = await Promise.all([
     sb.from('classrooms').select('*').eq('id', id).single(),
     sb.from('classroom_resources').select('*').eq('classroom_id', id).order('category'),
     sb.from('classroom_notes').select('*').eq('classroom_id', id),
     sb.from('school_resources').select('id, category, name, notes').order('category'),
+    sb.from('school_profile').select('*').eq('id', SCHOOL_PROFILE_ID).maybeSingle(),
   ]);
 
   if (classroomRes.error || !classroomRes.data) {
@@ -1274,17 +1335,19 @@ selectEl.addEventListener('change', async () => {
   const resources       = resourcesRes.data || [];
   const notes           = notesRes.data || [];
   const schoolResources = schoolRes.data   || [];
+  const schoolProfile   = profileRes.data  || null;
 
   currentClassroom = {
     data: classroom,
     resources,
     notes,
     schoolResources,
-    contextString: buildContextString(classroom, resources, notes, schoolResources),
+    schoolProfile,
+    contextString: buildContextString(classroom, resources, notes, schoolResources, schoolProfile),
   };
 
   // Build left panel
-  buildContextPanel(classroom, resources, notes, schoolResources);
+  buildContextPanel(classroom, resources, notes, schoolResources, schoolProfile);
 
   // Update chat header
   chatTitle.textContent = `${classroom.teacher_name}'s Classroom`;
