@@ -144,6 +144,96 @@
       color: var(--usf-green);
       margin: 0 0 .35rem;
     }
+
+    /* Delete teacher control */
+    .teacher-card__footer {
+      margin-top: .35rem;
+      padding-top: .5rem;
+      border-top: 1px solid var(--rule-light);
+      display: flex;
+      justify-content: flex-end;
+    }
+    .teacher-card__delete {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-size: .75rem;
+      padding: .25rem .55rem;
+      border-radius: var(--radius);
+    }
+    .teacher-card__delete:hover {
+      background: #fef2f2;
+      color: #b91c1c;
+    }
+
+    /* Delete confirmation modal */
+    .delete-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 100;
+    }
+    .delete-overlay.show { display: flex; }
+    .delete-modal {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, .25);
+      width: 100%;
+      max-width: 480px;
+      padding: 1.5rem 1.4rem 1.3rem;
+      border-top: 5px solid #b91c1c;
+    }
+    .delete-modal h3 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      color: #b91c1c;
+      margin: 0 0 .4rem;
+    }
+    .delete-modal p { margin: 0 0 .65rem; }
+    .delete-summary {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--radius);
+      padding: .75rem .9rem;
+      font-size: .85rem;
+      color: var(--ink);
+      margin: .65rem 0 .9rem;
+    }
+    .delete-summary ul {
+      margin: .35rem 0 0 1.1rem;
+      padding: 0;
+    }
+    .delete-summary li { margin-bottom: .15rem; }
+    .delete-input {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1.5px solid var(--rule);
+      border-radius: var(--radius);
+      font-family: var(--font-body);
+      font-size: .9rem;
+    }
+    .delete-input:focus {
+      outline: none;
+      border-color: #b91c1c;
+      box-shadow: 0 0 0 3px rgba(185, 28, 28, .12);
+    }
+    .delete-actions {
+      display: flex;
+      gap: .5rem;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+    .delete-error {
+      color: #b91c1c;
+      font-size: .82rem;
+      margin: .5rem 0 0;
+      min-height: 1.1em;
+    }
   </style>
 </head>
 <body>
@@ -187,6 +277,22 @@
       </div>
     </div>
   </main>
+
+  <!-- Delete-teacher confirmation modal -->
+  <div class="delete-overlay" id="delete-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+    <div class="delete-modal">
+      <h3 id="delete-title">Delete teacher</h3>
+      <p id="delete-target-name"></p>
+      <div class="delete-summary" id="delete-summary"></div>
+      <p>This cannot be undone. Type the teacher's name to confirm:</p>
+      <input type="text" class="delete-input" id="delete-confirm-input" autocomplete="off" />
+      <p class="delete-error" id="delete-error"></p>
+      <div class="delete-actions">
+        <button class="btn btn--ghost" id="delete-cancel">Cancel</button>
+        <button class="btn btn--danger" id="delete-confirm" disabled>Delete teacher</button>
+      </div>
+    </div>
+  </div>
 
   <script>
   const sb = window.sb;
@@ -294,6 +400,12 @@
           </div>
           <div class="chip-row">${chipsHtml}</div>
           ${addHtml}
+          <div class="teacher-card__footer">
+            <button class="teacher-card__delete"
+                    data-delete-teacher="${t.id}"
+                    data-name="${escapeHtml(t.display_name || t.email || '(this teacher)')}"
+                    title="Delete this teacher and their solo-owned classrooms">Delete teacher</button>
+          </div>
         </div>
       `;
     }).join('');
@@ -330,7 +442,134 @@
         render();
       });
     });
+
+    /* Delete a teacher */
+    areaEl.querySelectorAll('[data-delete-teacher]').forEach(btn => {
+      btn.addEventListener('click', () => openDeleteModal(
+        btn.getAttribute('data-delete-teacher'),
+        btn.getAttribute('data-name'),
+      ));
+    });
   }
+
+  /* ─────────────────────────────────────────
+     Delete-teacher modal flow
+  ───────────────────────────────────────── */
+  const deleteOverlay  = document.getElementById('delete-overlay');
+  const deleteNameEl   = document.getElementById('delete-target-name');
+  const deleteSummary  = document.getElementById('delete-summary');
+  const deleteInput    = document.getElementById('delete-confirm-input');
+  const deleteErrEl    = document.getElementById('delete-error');
+  const deleteCancelEl = document.getElementById('delete-cancel');
+  const deleteConfirmEl= document.getElementById('delete-confirm');
+
+  let pendingDelete = null;   // { id, name, expected }
+
+  async function openDeleteModal(teacher_id, name) {
+    // Compute scope: solo-owned vs shared, lesson plans count
+    const linkedClassroomIds = links
+      .filter(l => l.teacher_id === teacher_id)
+      .map(l => l.classroom_id);
+
+    let soloOwned = 0;
+    let shared    = 0;
+    linkedClassroomIds.forEach(cid => {
+      const otherTeachersOnClassroom = links
+        .filter(l => l.classroom_id === cid && l.teacher_id !== teacher_id);
+      if (otherTeachersOnClassroom.length === 0) soloOwned++;
+      else shared++;
+    });
+
+    const { count: planCount, error: planErr } = await sb
+      .from('lesson_plans')
+      .select('id', { count: 'exact', head: true })
+      .eq('teacher_id', teacher_id);
+    const plans = planErr ? '?' : (planCount ?? 0);
+
+    deleteNameEl.innerHTML = `You're about to delete <strong>${escapeHtml(name)}</strong>.`;
+    deleteSummary.innerHTML = `
+      <strong>This will permanently:</strong>
+      <ul>
+        <li>Delete <strong>${soloOwned}</strong> classroom${soloOwned === 1 ? '' : 's'} they're the only teacher on (and all resources and notes on those rooms)</li>
+        <li>Remove their link from <strong>${shared}</strong> shared classroom${shared === 1 ? '' : 's'} (those rooms remain)</li>
+        <li>Delete <strong>${plans}</strong> saved lesson plan${plans === 1 ? '' : 's'}</li>
+        <li>Delete their account (the email becomes available for re-signup)</li>
+      </ul>
+    `;
+    deleteInput.value = '';
+    deleteErrEl.textContent = '';
+    deleteConfirmEl.disabled = true;
+    deleteConfirmEl.textContent = 'Delete teacher';
+
+    pendingDelete = { id: teacher_id, name, expected: name };
+    deleteOverlay.classList.add('show');
+    setTimeout(() => deleteInput.focus(), 30);
+  }
+
+  function closeDeleteModal() {
+    deleteOverlay.classList.remove('show');
+    pendingDelete = null;
+  }
+
+  deleteCancelEl.addEventListener('click', closeDeleteModal);
+  deleteOverlay.addEventListener('click', (e) => {
+    if (e.target === deleteOverlay) closeDeleteModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && deleteOverlay.classList.contains('show')) closeDeleteModal();
+  });
+
+  deleteInput.addEventListener('input', () => {
+    deleteConfirmEl.disabled = !pendingDelete || deleteInput.value.trim() !== pendingDelete.expected;
+    deleteErrEl.textContent = '';
+  });
+
+  deleteConfirmEl.addEventListener('click', async () => {
+    if (!pendingDelete) return;
+    if (deleteInput.value.trim() !== pendingDelete.expected) return;
+
+    deleteConfirmEl.disabled = true;
+    deleteConfirmEl.textContent = 'Deleting…';
+    deleteErrEl.textContent = '';
+
+    const { data: { session }, error: sessErr } = await sb.auth.getSession();
+    if (sessErr || !session?.access_token) {
+      deleteErrEl.textContent = 'Not signed in.';
+      deleteConfirmEl.disabled = false;
+      deleteConfirmEl.textContent = 'Delete teacher';
+      return;
+    }
+
+    let resp;
+    try {
+      resp = await fetch(`${window.SUPABASE_URL}/functions/v1/delete-teacher`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ teacher_id: pendingDelete.id }),
+      });
+    } catch (err) {
+      deleteErrEl.textContent = 'Network error: ' + (err.message || 'unknown');
+      deleteConfirmEl.disabled = false;
+      deleteConfirmEl.textContent = 'Delete teacher';
+      return;
+    }
+
+    let payload = null;
+    try { payload = await resp.json(); } catch (_) { /* ignore */ }
+
+    if (!resp.ok) {
+      deleteErrEl.textContent = (payload && payload.error) || `Delete failed (status ${resp.status}).`;
+      deleteConfirmEl.disabled = false;
+      deleteConfirmEl.textContent = 'Delete teacher';
+      return;
+    }
+
+    closeDeleteModal();
+    await loadAll();
+  });
 
   /* ─────────────────────────────────────────
      Init — admin only
