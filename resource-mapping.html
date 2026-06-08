@@ -575,6 +575,40 @@ document.getElementById('form-add-classroom').addEventListener('submit', async (
   await loadClassroomDetail(newClassroom.id);
 });
 
+// ── Pre-fill Add Classroom form from school_profile ──────────
+const SCHOOL_PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+
+function setCheckedByName(name, values) {
+  const set = new Set((values || []).map(String));
+  document.querySelectorAll(`input[type="checkbox"][name="${name}"]`)
+    .forEach(cb => { cb.checked = set.has(cb.value); });
+}
+
+function prefillAddClassroomFromProfile(profile) {
+  if (!profile) return;
+  if (profile.school_name) {
+    document.getElementById('cl-school').value = profile.school_name;
+  }
+  if (profile.primary_ecosystem) {
+    document.getElementById('cl-ecosystem').value = profile.primary_ecosystem;
+  }
+  if (Array.isArray(profile.available_devices)) {
+    setCheckedByName('devices', profile.available_devices);
+  }
+  if (Array.isArray(profile.available_platforms)) {
+    setCheckedByName('platforms', profile.available_platforms);
+  }
+}
+
+async function loadAndPrefillSchoolProfile() {
+  const { data } = await db
+    .from('school_profile')
+    .select('school_name, primary_ecosystem, available_devices, available_platforms')
+    .eq('id', SCHOOL_PROFILE_ID)
+    .maybeSingle();
+  prefillAddClassroomFromProfile(data);
+}
+
 // ── Init ─────────────────────────────────────────────────────
 (async () => {
   // Gate the page on an authenticated session and load profile.
@@ -586,8 +620,14 @@ document.getElementById('form-add-classroom').addEventListener('submit', async (
   window.Auth.renderUserChip();
 
   // Rely on RLS to filter classrooms by role (admin sees all; teacher
-  // sees only those joined via classroom_teachers).
-  await loadDashboard();
+  // sees only those joined via classroom_teachers). Pre-fill the Add
+  // Classroom form from the singleton school profile so the teacher
+  // gets the school defaults (ecosystem, devices, platforms, school
+  // name) without retyping; they can override before submitting.
+  await Promise.all([
+    loadDashboard(),
+    loadAndPrefillSchoolProfile(),
+  ]);
 })();
 </script>
 </body>
