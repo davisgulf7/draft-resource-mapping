@@ -1564,7 +1564,9 @@ async function sendToAI(userText, isGreeting) {
 
     // The ready sentence: the AI has what it needs. Queue the go-ahead turn
     // (sent once the input state below is restored) so the plan follows.
-    if (!wasCutOff && isReadySentence(fullText)) {
+    // Never follow up a go-ahead turn, even if the AI repeats the sentence:
+    // that would loop.
+    if (!wasCutOff && userText !== GO_AHEAD && isReadySentence(fullText)) {
       followUpWithPlan = true;
     }
 
