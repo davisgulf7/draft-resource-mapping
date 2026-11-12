@@ -570,6 +570,17 @@
       line-height: 1.6;
     }
 
+    /* ── Admin preview banner under the chat header ── */
+    .preview-banner {
+      margin: 0;
+      padding: 0.5rem 1.25rem;
+      background: #eff6ff;
+      color: #1e3a8a;
+      border-bottom: 1px solid #bfdbfe;
+      font-size: 0.9rem;
+    }
+    .preview-banner[hidden] { display: none; }
+
     /* ── Cut-off notice inside an assistant bubble ── */
     .cutoff-note {
       margin-top: 0.75rem;
@@ -794,6 +805,11 @@
       </div>
     </div>
 
+    <!-- Admin preview notice (shown only for admins) -->
+    <p class="preview-banner" id="preview-banner" role="status" hidden>
+      Preview: plans made here are not saved. Teachers save plans from their own sign-in.
+    </p>
+
     <!-- Empty state (shown before classroom selected) -->
     <div class="chat-empty-state" id="chat-empty-state">
       <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
@@ -883,6 +899,16 @@ const SUPABASE_ANON = window.SUPABASE_ANON;
 
 /* Session state, populated by init() at the bottom of this script. */
 let currentRole = null;          // 'teacher' | 'admin'
+
+/* The AI (Edge Function rule 11) answers with this sentence, alone, once it
+   has everything it needs. The page shows it, then sends GO_AHEAD on the
+   teacher's behalf so the plan streams in while the sentence is on screen. */
+const READY_SENTENCE = "I have all the information I need; I'm starting on your lesson plan now.";
+const GO_AHEAD       = '[GO AHEAD — write the full lesson plan now]';
+function isReadySentence(text) {
+  const plain = String(text).replace(/[*_`#>]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  return plain.length < 140 && plain.startsWith('i have all the information i need');
+}
 let currentUserId = null;
 
 /* ─────────────────────────────────────────
@@ -1458,6 +1484,7 @@ async function sendToAI(userText, isGreeting) {
   // Bubble we'll progressively fill as the stream arrives
   let streamingBubble = null;
   let fullText = '';
+  let followUpWithPlan = false;
 
   try {
     const payload = {
@@ -1535,6 +1562,12 @@ async function sendToAI(userText, isGreeting) {
     conversationHistory.push({ role: 'assistant', content: fullText });
     setStatus('ready');
 
+    // The ready sentence: the AI has what it needs. Queue the go-ahead turn
+    // (sent once the input state below is restored) so the plan follows.
+    if (!wasCutOff && isReadySentence(fullText)) {
+      followUpWithPlan = true;
+    }
+
     // Offer "Save lesson plan" on substantive, complete responses
     if (streamingBubble && !wasCutOff && fullText.length >= 400 && currentRole === 'teacher') {
       attachSaveButton(streamingBubble, fullText);
@@ -1550,6 +1583,12 @@ async function sendToAI(userText, isGreeting) {
     chatInput.disabled = false;
     sendBtn.disabled   = false;
     chatInput.focus();
+  }
+
+  if (followUpWithPlan) {
+    // Not shown as a user bubble: the teacher did not type it.
+    conversationHistory.push({ role: 'user', content: GO_AHEAD });
+    await sendToAI(GO_AHEAD, false);
   }
 }
 
@@ -1710,6 +1749,9 @@ saveConfirmEl.addEventListener('click', async () => {
   const { user, profile } = await window.Auth.requireSession();
   currentUserId = user.id;
   currentRole   = profile.role;
+  if (currentRole === 'admin') {
+    document.getElementById('preview-banner').hidden = false;
+  }
 
   window.Auth.renderUserChip();
 

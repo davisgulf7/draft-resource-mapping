@@ -27,7 +27,7 @@ codes / admin-creates-teacher for production.
 | `resource-mapping.html` | Both | Dashboard of classrooms (admin = all, teacher = own); add-classroom + add-resource forms; classroom detail view. **Teacher landing page.** |
 | `my-classroom.html` | Teacher | Edit classroom info, notes, and resources. Classroom switcher for multi-classroom teachers. URL `?id=` deep-link. |
 | `school-resources.html` | Both | **School Profile** panel (admin form / teacher read-only chips) + building-wide resource list (admin CRUD with edit-in-place; teacher read-only). |
-| `lesson-planner.html` | Both | Two-pane conversational UI. Left = pre-fetched classroom + school context. Right = streaming Claude chat. Save Lesson Plan button on substantive responses (teacher). |
+| `lesson-planner.html` | Both | Two-pane conversational UI. Left = pre-fetched classroom + school context. Right = streaming Claude chat. Once the AI has topic, standards (or none) and time frame it answers with a single ready sentence; the page then sends a silent go-ahead turn and the plan streams in. Save Lesson Plan button on substantive responses (teacher only). Admins see a preview banner: they can run the planner against any classroom but nothing is saved. A response cut off at the output limit is marked as such. |
 | `lesson-editor.html` | Teacher | Quill 2 rich-text editor for a saved lesson. Stores both Delta and HTML; Cmd/Ctrl+S; beforeunload guard. |
 | `my-lessons.html` | Teacher | Card grid of the signed-in teacher's saved plans. |
 
