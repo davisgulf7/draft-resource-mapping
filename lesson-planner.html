@@ -570,6 +570,16 @@
       line-height: 1.6;
     }
 
+    /* ── Cut-off notice inside an assistant bubble ── */
+    .cutoff-note {
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-left: 3px solid #b45309;
+      background: #fffbeb;
+      color: #78350f;
+      font-size: 0.9rem;
+    }
+
     /* ── Error toast ── */
     .toast {
       position: fixed;
@@ -1505,11 +1515,28 @@ async function sendToAI(userText, isGreeting) {
       streamingBubble.textContent = '(no response)';
     }
 
+    // The Edge Function appends a marker when the AI stopped because it
+    // reached its output limit. Strip it, say so in the bubble, and do not
+    // offer to save a cut-off plan.
+    const STOP_MARKER = '[[STOP:max_tokens]]';
+    const wasCutOff = fullText.endsWith(STOP_MARKER);
+    if (wasCutOff) {
+      fullText = fullText.slice(0, -STOP_MARKER.length);
+      streamingBubble.innerHTML = renderMarkdown(fullText);
+      const note = document.createElement('p');
+      note.className = 'cutoff-note';
+      note.setAttribute('role', 'status');
+      note.textContent = 'This response stopped early because it reached the length limit. Ask me to continue from where it left off.';
+      streamingBubble.appendChild(note);
+      scrollToBottom();
+      showToast('The response was cut off at the length limit. Ask the AI to continue.');
+    }
+
     conversationHistory.push({ role: 'assistant', content: fullText });
     setStatus('ready');
 
-    // Offer "Save lesson plan" on substantive responses
-    if (streamingBubble && fullText.length >= 400 && currentRole === 'teacher') {
+    // Offer "Save lesson plan" on substantive, complete responses
+    if (streamingBubble && !wasCutOff && fullText.length >= 400 && currentRole === 'teacher') {
       attachSaveButton(streamingBubble, fullText);
     }
 

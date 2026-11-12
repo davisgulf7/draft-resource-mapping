@@ -14,7 +14,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 ───────────────────────────────────────────────────────────── */
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
-const MODEL = "claude-sonnet-4-5";
+const MODEL = "claude-sonnet-5-5"; // was claude-sonnet-4-5 (retires 2026-11-30); switched 2026-11-11
+/* Sonnet 5.5 reasons before it answers. "medium" effort keeps the pause before
+   the first words short for a streaming demo; raise to "high" if plans drift
+   from the framework. */
+const EFFORT = "medium";
 
 /* ─────────────────────────────────────────────────────────────
    FRAMEWORK + BEHAVIORAL RULES (cached)
@@ -276,10 +280,15 @@ ${classroomContext}`,
         "Content-Type": "application/json",
         "x-api-key": ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
+        // Server-side fallback: if a safety classifier declines a request, Anthropic
+        // answers it with another model instead of returning an empty refusal.
+        "anthropic-beta": "server-side-fallback-2026-07-01",
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4096,
+        max_tokens: 16000, // a five-day plan with a rubric passed 4,096 and was cut mid-sentence (2026-11-11)
+        output_config: { effort: EFFORT },
+        fallbacks: "default",
         system: systemBlocks,
         messages: apiMessages,
         stream: true,
@@ -291,14 +300,21 @@ ${classroomContext}`,
       throw new Error(`Anthropic API error ${anthropicResponse.status}: ${errText}`);
     }
 
-    /* ── Parse SSE, forward text deltas as a plain stream ── */
+    /* ── Parse SSE, forward text deltas as a plain stream ──
+       The page receives plain text. Two things ride along with it:
+       • if Anthropic stops because the output cap was reached, a trailer
+         marker (STOP_MARKER) is appended so the page can say so instead of
+         presenting a cut-off plan as finished;
+       • an SSE "error" event becomes a stream error, not a silent stop. */
     const upstream = anthropicResponse.body.getReader();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
+    const STOP_MARKER = "[[STOP:max_tokens]]";
 
     const stream = new ReadableStream({
       async start(controller) {
         let buffer = "";
+        let stopReason: string | null = null;
         try {
           while (true) {
             const { done, value } = await upstream.read();
@@ -318,13 +334,30 @@ ${classroomContext}`,
                   typeof parsed.delta.text === "string"
                 ) {
                   controller.enqueue(encoder.encode(parsed.delta.text));
+                } else if (
+                  parsed.type === "message_delta" &&
+                  typeof parsed.delta?.stop_reason === "string"
+                ) {
+                  stopReason = parsed.delta.stop_reason;
+                } else if (parsed.type === "error") {
+                  throw new Error(
+                    `Anthropic stream error: ${parsed.error?.message ?? JSON.stringify(parsed.error)}`,
+                  );
                 }
-              } catch {
-                /* ignore malformed JSON chunks */
+              } catch (e) {
+                if (e instanceof Error && e.message.startsWith("Anthropic stream error")) throw e;
+                /* otherwise a malformed JSON chunk: skip it */
               }
             }
           }
+          if (stopReason === "max_tokens") {
+            console.warn("lesson-planner: response hit max_tokens");
+            controller.enqueue(encoder.encode(STOP_MARKER));
+          } else if (stopReason && stopReason !== "end_turn") {
+            console.warn(`lesson-planner: stop_reason ${stopReason}`);
+          }
         } catch (e) {
+          console.error("lesson-planner stream error:", e instanceof Error ? e.message : e);
           controller.error(e);
           return;
         }
